@@ -1,0 +1,10 @@
+# Visual Studio project files.
+AvitoPriceBot.pyproj
+AvitoPriceBot.sln
+.vs
+
+# Parced titles data.
+Logs
+
+# Python cache.
+__pycache__
