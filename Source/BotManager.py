@@ -27,7 +27,7 @@ class ExpectedMessageTypes(enum.Enum):
 class BotManager:
 	
 	# Создаёт задачу в планировщике.
-	def __CreateTask(self, Bufer: dict):
+	def __CreateTask(self, Bufer: dict, ID: str | None = None):
 		
 		# Проверка по типу триггера.
 		match Bufer["trigger"]["type"]:
@@ -43,7 +43,8 @@ class BotManager:
 					Price = Bufer["method"]["price"],
 					IsDelta = Bufer["method"]["delta"],
 					DayOfWeek = Bufer["trigger"]["day-of-week"],
-					Time = (Bufer["trigger"]["hour"], Bufer["trigger"]["minute"])
+					Time = (Bufer["trigger"]["hour"], Bufer["trigger"]["minute"]),
+					ID = ID
 				)
 	
 	# Очищает буфер регистрации аккаунта Авито.
@@ -102,7 +103,7 @@ class BotManager:
 			
 			# Если задача активна, то загрузить её.
 			if Bufer["active"] == True:
-				self.__CreateTask(Bufer)
+				self.__CreateTask(Bufer, TaskID)
 		
 	# Конструктор.
 	def __init__(self, Settings: dict):
@@ -154,6 +155,10 @@ class BotManager:
 	# Возвращает тип ожидаемого сообщения.
 	def getExpectedType(self) -> ExpectedMessageTypes:
 		return self.__ExpectedType
+	
+	# Возвращает список задач.
+	def scheduler(self) -> Scheduler:
+		return self.__Planner
 	
 	# Вход в бота.
 	def login(self, UserID: int, Password: str | None = None) -> bool:
@@ -235,6 +240,10 @@ class BotManager:
 	#==========================================================================================#
 	# >>>>> КОМАНДЫ <<<<< #
 	#==========================================================================================#
+
+	# Удаляет задачу.
+	def cmd_deltask(self, TaskID: str) -> bool:
+		return self.__Planner.removeTask(TaskID)
 
 	# Изменяет стоимость аренды.
 	def cmd_price(self, UserID: str, ItemID: str, Price: str) -> bool:

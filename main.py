@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
 from dublib.Methods import Cls, CheckPythonMinimalVersion, MakeRootDirectories, ReadJSON
-from Source.Functions import EscapeCharacters, ParseCommand, UserAuthRequired
 from Source.BotManager import *
+from Source.Functions import *
 from telebot import types
 
 import datetime
@@ -66,9 +66,10 @@ if type(Settings["token"]) != str or Settings["token"].strip() == "":
 
 # Список команд.
 COMMANDS = [
+	"deltask",
+	"newtask",
 	"price",
-	"rename",
-	"newtask"
+	"rename"
 ]
 
 # Запись в лог сообщения: заголовок рабочей области.
@@ -188,6 +189,37 @@ def ProcessCommandStart(Message: types.Message):
 		parse_mode = "MarkdownV2",
 		disable_web_page_preview = True
 	)
+	
+# Обработка команды: tasks.
+@Bot.message_handler(commands=["tasks"])
+def ProcessCommandStart(Message: types.Message):
+	# Сообщение со списоком задач.
+	TasksMessage = "*Список задач*\n\n"
+	# Построение списка описаний.
+	Descriptions = BuildTasksDescriptions(BotData.scheduler().getTasks())
+
+	# Если нет задач.
+	if len(Descriptions) == 0:
+		# Добавление информации об отсутствии задач.
+		TasksMessage += "Ничего не запланировано\."
+		
+	else:
+		# Объединение списка в сообщение.
+		TasksMessage += "\n".join(Descriptions)
+	
+	# Проверка авторизации пользователя.
+	if BotData.login(Message.from_user.id) == True:
+		# Отправка сообщения: инструкция по регистрации клиента Авито.
+		Bot.send_message(
+			Message.chat.id,
+			TasksMessage,
+			parse_mode = "MarkdownV2",
+			disable_web_page_preview = True
+		)
+	
+	else:
+		# Отправка сообщения: необходимо авторизоваться.
+		UserAuthRequired(Bot, Message.chat.id)
 	
 # Обработка текстовых сообщений.
 @Bot.message_handler(content_types=["text"])
@@ -311,6 +343,30 @@ def ProcessTextMessage(Message: types.Message):
 						# Проверка соответствия команд.
 						match Command:
 							
+							# Обработка команды: deltask.
+							case "deltask":
+								# Попытка выполнить команду.
+								Result = BotData.cmd_deltask(CommandData[1])
+								
+								# Если выполнение успешно.
+								if Result == True:
+									# Отправка сообщения: задача удалена.
+									Bot.send_message(
+										Message.chat.id,
+										f"Задача удалена.",
+										parse_mode = None,
+										disable_web_page_preview = True
+									)
+									
+								else:
+									# Отправка сообщения: не удалось удалить задачу.
+									Bot.send_message(
+										Message.chat.id,
+										f"Не удалось удалить задачу. Проверьте корректность указанного идентификатора.",
+										parse_mode = None,
+										disable_web_page_preview = True
+									)
+							
 							# Обработка команды: newtask.
 							case "newtask":
 								# Попытка выполнить команду.
@@ -321,7 +377,7 @@ def ProcessTextMessage(Message: types.Message):
 									# Отправка сообщения: идентификатор успешно изменён.
 									Bot.send_message(
 										Message.chat.id,
-										f"Задача успешно создана.",
+										f"Задача создана.",
 										parse_mode = None,
 										disable_web_page_preview = True
 									)

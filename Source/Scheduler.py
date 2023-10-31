@@ -18,7 +18,7 @@ class Scheduler:
 		self.__Planner.start()
 	
 	# Создаёт задачу с синтаксисом cron.
-	def createCronTask(self, Task: any, Profile: str, ItemID: int, Price: int, IsDelta: bool, DayOfWeek: str, Time: tuple = (0, 0)) -> bool:
+	def createCronTask(self, Task: any, Profile: str, ItemID: int, Price: int, IsDelta: bool, DayOfWeek: str, Time: tuple = (0, 0), ID: str | None = None) -> bool:
 		# Состояние: успешна ли операция.
 		IsSuccess = True
 		# Словарь описания.
@@ -38,8 +38,14 @@ class Scheduler:
 				"repeat": True
 			}
 		}
-		# Инкремент последнего ID.
-		self.__Tasks["last-id"] += 1
+		
+		# Если задача новая.
+		if ID == None:
+			# Инкремент последнего ID.
+			self.__Tasks["last-id"] += 1
+			# Присвоение ID.
+			ID = str(self.__Tasks["last-id"])
+			
 		# Остановка планировщика.
 		self.__Planner.pause()
 		# Создание задачи.
@@ -47,7 +53,7 @@ class Scheduler:
 			func = Task,
 			trigger = "cron",
 			args = (ItemID, Price),
-			id = str(self.__Tasks["last-id"]),
+			id = ID,
 			day_of_week = DayOfWeek, 
 			hour = Time[0], 
 			minute = Time[1]
@@ -55,8 +61,36 @@ class Scheduler:
 		# Включение планировщика.
 		self.__Planner.resume()
 		# Запись описания задачи.
-		self.__Tasks["tasks"][str(self.__Tasks["last-id"])] = Description
+		self.__Tasks["tasks"][ID] = Description
 		# Перезапись файла.
 		WriteJSON("Data/Tasks.json", self.__Tasks)
 
+		return IsSuccess
+	
+	# Возвращает словарь задач.
+	def getTasks(self) -> dict:
+		return self.__Tasks["tasks"]
+
+	# Удаляет задачу.
+	def removeTask(self, TaskID: str) -> bool:
+		# Состояние: успешна ли операция.
+		IsSuccess = True
+		
+		# Если задача существует.
+		if TaskID in self.__Tasks["tasks"].keys():
+			# Остановка планировщика.
+			self.__Planner.pause()
+			# Удаление задачи.
+			self.__Planner.remove_job(TaskID)
+			# Удаление записи о задаче.
+			del self.__Tasks["tasks"][TaskID]
+			# Включение планировщика.
+			self.__Planner.resume()
+			# Перезапись файла.
+			WriteJSON("Data/Tasks.json", self.__Tasks)
+			
+		else:
+			# Переключение состояния.
+			IsSuccess = False
+			
 		return IsSuccess

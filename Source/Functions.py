@@ -2,6 +2,32 @@ from dublib.Methods import RemoveRecurringSubstrings
 
 import telebot
 
+# Строит список описаний задач.
+def BuildTasksDescriptions(Tasks: dict) -> list[str]:
+	# Описания задач.
+	Descriptions = list()
+	
+	# Для каждой задачи.
+	for TaskID in Tasks.keys():
+		# Конвертирование стоимости в строку.
+		Price = str(Tasks[TaskID]["method"]["price"])
+		
+		# Формирование стоимости.
+		if Tasks[TaskID]["method"]["delta"] == True and Tasks[TaskID]["method"]["price"] > 0:
+			# Добавление символа плюса.
+			Price = "\+" + Price
+			
+		# Буфер описания.
+		Bufer = "Идентификатор: " + EscapeCharacters(TaskID) + "\n"
+		Bufer += "Профиль Авито: " + Tasks[TaskID]["method"]["profile"] + "\n"
+		Bufer += "ID объявления: " + str(Tasks[TaskID]["method"]["item-id"]) + "\n"
+		Bufer += "Стоимость: " + EscapeCharacters(Price) + "\n"
+		Bufer += "Условие: _каждый " + Tasks[TaskID]["trigger"]["day-of-week"] + " в " + str(Tasks[TaskID]["trigger"]["hour"]) + ":" + str(Tasks[TaskID]["trigger"]["minute"]) + "_\.\n"
+		# Сохранение буфера.
+		Descriptions.append(Bufer)
+		
+	return Descriptions
+
 # Экранирует символы при использовании MarkdownV2 разметки.
 def EscapeCharacters(Post: str) -> str:
 	# Список экранируемых символов. _ * [ ] ( ) ~ ` > # + - = | { } . !
