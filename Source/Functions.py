@@ -15,14 +15,21 @@ def BuildTasksDescriptions(Tasks: dict) -> list[str]:
 		# Формирование стоимости.
 		if Tasks[TaskID]["method"]["delta"] == True and Tasks[TaskID]["method"]["price"] > 0:
 			# Добавление символа плюса.
-			Price = "\+" + Price
+			Price = "+" + Price
 			
 		# Буфер описания.
 		Bufer = "Идентификатор: " + EscapeCharacters(TaskID) + "\n"
 		Bufer += "Профиль Авито: " + Tasks[TaskID]["method"]["profile"] + "\n"
 		Bufer += "ID объявления: " + str(Tasks[TaskID]["method"]["item-id"]) + "\n"
 		Bufer += "Стоимость: " + EscapeCharacters(Price) + "\n"
-		Bufer += "Условие: _каждый " + Tasks[TaskID]["trigger"]["day-of-week"] + " в " + str(Tasks[TaskID]["trigger"]["hour"]) + ":" + str(Tasks[TaskID]["trigger"]["minute"]) + "_\.\n"
+		
+		# Если тип триггера – cron.
+		if Tasks[TaskID]["trigger"]["type"] == "cron":
+			Bufer += "Условие: _каждый " + Tasks[TaskID]["trigger"]["day"] + " в " + str(Tasks[TaskID]["trigger"]["hour"]) + ":" + str(Tasks[TaskID]["trigger"]["minute"]) + "_\.\n"
+			
+		else:
+			Bufer += "Условие: _" + EscapeCharacters(Tasks[TaskID]["trigger"]["day"]) + " в " + str(Tasks[TaskID]["trigger"]["hour"]) + ":" + str(Tasks[TaskID]["trigger"]["minute"]) + "_\.\n"
+			
 		# Сохранение буфера.
 		Descriptions.append(Bufer)
 		

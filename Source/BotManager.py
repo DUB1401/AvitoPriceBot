@@ -26,6 +26,16 @@ class ExpectedMessageTypes(enum.Enum):
 # Менеджер данных бота.
 class BotManager:
 	
+	# Добавляет разрешённого пользователя.
+	def __AddAllowedUser(self, UserID: int):
+		# Чтение файла данных бота.
+		Bufer = ReadJSON("Data/Bot.json")
+		# Добавление ID пользователя в JSON файл и список.
+		self.__AllowedUsers.append(UserID)
+		Bufer["allowed-users"].append(UserID)
+		# Сохранение данных бота.
+		WriteJSON("Data/Bot.json", Bufer)
+	
 	# Создаёт задачу в планировщике.
 	def __CreateTask(self, Bufer: dict, ID: str | None = None):
 		
@@ -42,7 +52,22 @@ class BotManager:
 					ItemID = Bufer["method"]["item-id"],
 					Price = Bufer["method"]["price"],
 					IsDelta = Bufer["method"]["delta"],
-					DayOfWeek = Bufer["trigger"]["day-of-week"],
+					DayOfWeek = Bufer["trigger"]["day"],
+					Time = (Bufer["trigger"]["hour"], Bufer["trigger"]["minute"]),
+					ID = ID
+				)
+				
+			# Если тип триггера задачи – date.
+			case "date":
+				
+				# Установка задачи.
+				self.__Planner.createDateTask(
+					Task = self.__StartOnceTask,
+					Profile = Bufer["method"]["profile"],
+					ItemID = Bufer["method"]["item-id"],
+					Price = Bufer["method"]["price"],
+					IsDelta = Bufer["method"]["delta"],
+					Date = Bufer["trigger"]["day"],
 					Time = (Bufer["trigger"]["hour"], Bufer["trigger"]["minute"]),
 					ID = ID
 				)
@@ -55,16 +80,6 @@ class BotManager:
 			"client-id": None,
 			"client-secret": None
 		}
-		
-	# Добавляет разрешённого пользователя.
-	def __AddAllowedUser(self, UserID: int):
-		# Чтение файла данных бота.
-		Bufer = ReadJSON("Data/Bot.json")
-		# Добавление ID пользователя в JSON файл и список.
-		self.__AllowedUsers.append(UserID)
-		Bufer["allowed-users"].append(UserID)
-		# Сохранение данных бота.
-		WriteJSON("Data/Bot.json", Bufer)
 	
 	# Загружает список разрешённых пользователей.
 	def __LoadAllowedUsers(self):
@@ -105,6 +120,13 @@ class BotManager:
 			if Bufer["active"] == True:
 				self.__CreateTask(Bufer, TaskID)
 		
+	# Выполняет задачу один раз.
+	def __StartOnceTask(self, Profile: str, ItemID: str, Price: int, IsDelta: bool, ID: str):
+		# Запуск задачи.
+		self.__Users[Profile].setPrice(ItemID, Price) if IsDelta == False else self.__Users[Profile].setDeltaPrice(ItemID, Price)
+		# Удаление задачи.
+		self.__Planner.removeTask(ID, True)
+
 	# Конструктор.
 	def __init__(self, Settings: dict):
 		
@@ -147,35 +169,6 @@ class BotManager:
 	#==========================================================================================#
 	# >>>>> ПУБЛИЧНЫЕ МЕТОДЫ <<<<< #
 	#==========================================================================================#
-		
-	# Возвращает словарь пользователей Авито.
-	def getAvitoUsers(self) -> dict:
-		return self.__UsersData
-
-	# Возвращает тип ожидаемого сообщения.
-	def getExpectedType(self) -> ExpectedMessageTypes:
-		return self.__ExpectedType
-	
-	# Возвращает список задач.
-	def scheduler(self) -> Scheduler:
-		return self.__Planner
-	
-	# Вход в бота.
-	def login(self, UserID: int, Password: str | None = None) -> bool:
-		
-		# Если пользователь разрешён.
-		if Password == None and UserID in self.__AllowedUsers:
-			# Активация бота для пользователя.
-			self.__IsActive = True
-			
-		# Если пароль для нового пользователя верен.
-		elif Password == self.__Settings["bot-password"]:
-			# Активация бота для пользователя.
-			self.__IsActive = True
-			# Включение пользователя в реестр разрешённых.
-			self.__AddAllowedUser(UserID)
-			
-		return self.__IsActive
 	
 	# Добавляет в буфер ID аккаунта Авито.
 	def addAvitoUserProfileID(self, AccountID: str) -> bool:
@@ -202,6 +195,14 @@ class BotManager:
 	# Добавляет в буфер секретный ключ клиента Авито.
 	def addAvitoUserClientSecret(self, ClientSecret: str):
 		self.__AvitoUserBufer["client-secret"] = ClientSecret
+		
+	# Возвращает словарь пользователей Авито.
+	def getAvitoUsers(self) -> dict:
+		return self.__UsersData
+
+	# Возвращает тип ожидаемого сообщения.
+	def getExpectedType(self) -> ExpectedMessageTypes:
+		return self.__ExpectedType
 		
 	# Регистрирует нового пользователя Авито.
 	def register(self, UserID: str | None = None) -> bool:
@@ -232,11 +233,32 @@ class BotManager:
 		self.__AvitoUserBufer = None
 		
 		return IsSuccess
+	
+	# Вход в бота.
+	def login(self, UserID: int, Password: str | None = None) -> bool:
+		
+		# Если пользователь разрешён.
+		if Password == None and UserID in self.__AllowedUsers:
+			# Активация бота для пользователя.
+			self.__IsActive = True
+			
+		# Если пароль для нового пользователя верен.
+		elif Password == self.__Settings["bot-password"]:
+			# Активация бота для пользователя.
+			self.__IsActive = True
+			# Включение пользователя в реестр разрешённых.
+			self.__AddAllowedUser(UserID)
+			
+		return self.__IsActive
+	
+	# Возвращает список задач.
+	def scheduler(self) -> Scheduler:
+		return self.__Planner
 		
 	# Задаёт тип ожидаемого сообщения.
 	def setExpectedType(self, Type: ExpectedMessageTypes):
 		self.__ExpectedType = Type
-		
+	
 	#==========================================================================================#
 	# >>>>> КОМАНДЫ <<<<< #
 	#==========================================================================================#
@@ -289,6 +311,7 @@ class BotManager:
 		if OldID in self.__UsersData.keys():
 			# Переименовать его ключ.
 			self.__UsersData = RenameDictionaryKey(self.__UsersData.copy(), OldID, NewID)
+			self.__Users = RenameDictionaryKey(self.__Users.copy(), OldID, NewID)
 			# Переключить состояние.
 			IsSuccess = True
 			# Сохранение данных.
@@ -297,12 +320,25 @@ class BotManager:
 		return IsSuccess
 	
 	# Создаёт задачу с синтаксисом cron.
-	def cmd_newtask(self, Profile: str, ItemID: str, Price: str, DayOfWeek: str, Time: tuple) -> bool:
+	def cmd_newtask(self, Profile: str, ItemID: str, Price: str, Day: str, Time: tuple) -> bool:
 		# Состояние: успешна ли регистрация.
 		IsSuccess = True
 		# Состояние: включён ли режим дельта-цены.
 		IsDelta = False
+		# Тип задачи.
+		Type = "cron"
 		
+		# Если указана дата.
+		if Day.count('.') == 2:
+			# Инвертированиедаты.
+			Day = ".".join(reversed(Day.split('.')))
+			# Изменение типа задачи.
+			Type = "date"
+			
+		else:
+			# Перевод RU названия дня недели в EN.
+			Day = self.__Days[Day.lower()]
+
 		# Если указан знак, включить дельта-режим.
 		if '+' in Price or '-' in Price:
 			IsDelta = True
@@ -317,11 +353,11 @@ class BotManager:
 				"delta": IsDelta
 			},
 			"trigger": {
-				"type": "cron",
-				"day-of-week": self.__Days[DayOfWeek.lower()],
+				"type": Type,
+				"day": Day,
 				"hour": Time[0],
 				"minute": Time[1],
-				"repeat": True
+				"repeat": True if Type == "cron" else False
 			}
 		}
 		# Создание задачи.
