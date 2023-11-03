@@ -1,6 +1,7 @@
 {
 	"token": "",
 	"bot-password": "",
+	"timezone": "MSK",
 	"use-supervisor": true,
 	"delay": 1
 }

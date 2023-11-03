@@ -71,7 +71,18 @@ class BotManager:
 					Time = (Bufer["trigger"]["hour"], Bufer["trigger"]["minute"]),
 					ID = ID
 				)
-	
+				
+	# Возвращает список номеров профилей.
+	def __GetProfilesID(self) -> list[int]:
+		# Список номеров профилей.
+		Profiles = list()
+		
+		# Для каждого профиля записать номер.
+		for ProfileID in self.__UsersData.keys():
+			Profiles.append(self.__UsersData[ProfileID]["profile"])
+			
+		return Profiles
+			
 	# Очищает буфер регистрации аккаунта Авито.
 	def __InitializeAvitoRegister(self):
 		# Установка стандартных полей.
@@ -107,7 +118,7 @@ class BotManager:
 		# Чтение файла задач.
 		Tasks = ReadJSON("Data/Tasks.json")
 		# Инициализация планировщика.
-		self.__Planner = Scheduler(Tasks)
+		self.__Planner = Scheduler(self.__Settings, Tasks)
 		# Запись в лог сообщения: количество загруженных задач.
 		logging.info("Tasks count: " + str(len(Tasks["tasks"].keys())) + ".")
 		
@@ -116,10 +127,26 @@ class BotManager:
 			# Запись задачи в буфер.
 			Bufer = Tasks["tasks"][TaskID]
 			
-			# Если задача активна, то загрузить её.
+			# Если задача активна.
 			if Bufer["active"] == True:
-				self.__CreateTask(Bufer, TaskID)
-		
+				
+				# Если пользователь существует.
+				if Tasks["tasks"][TaskID]["method"]["profile"] in self.__UsersData.keys():
+					# Создать задачу.
+					self.__CreateTask(Bufer, TaskID)
+					
+				else:
+					# Переключение активности задачи.
+					Tasks["tasks"][TaskID]["active"] = False
+					# Сохранение в файл.
+					WriteJSON("Data/Tasks.json", Tasks)
+					# Запись в лог предупреждения: задача неактивна.
+					logging.warning(f"Task with ID {TaskID} marked as inactive.")
+					
+			else:
+				# Запись в лог сообщения: задача пропущена.
+				logging.info(f"Task with ID {TaskID} inactive. Skipped.")
+
 	# Выполняет задачу один раз.
 	def __StartOnceTask(self, Profile: str, ItemID: str, Price: int, IsDelta: bool, ID: str):
 		# Запуск задачи.
@@ -213,17 +240,26 @@ class BotManager:
 		
 		# Если токен получен.
 		if User.getAccessToken() != None:
-			# Переключение состояния успешности.
-			IsSuccess = True
 			
 			# Если пользователь новый.
 			if UserID == None:
-				# Помещение пользователя в словарь.
-				self.__Users[str(self.__AvitoUserBufer["profile"])] = User
-				# Запись данных пользователя.
-				self.__UsersData[str(self.__AvitoUserBufer["profile"])] = self.__AvitoUserBufer
-				# Сохранение данных пользователей.
-				WriteJSON("Data/Avito.json", self.__UsersData)
+				
+				# Если пользователь с таким идентификатором не существует.
+				if int(self.__AvitoUserBufer["profile"]) not in self.__GetProfilesID():
+					# Помещение пользователя в словарь.
+					self.__Users[str(self.__AvitoUserBufer["profile"])] = User
+					# Запись данных пользователя.
+					self.__UsersData[str(self.__AvitoUserBufer["profile"])] = self.__AvitoUserBufer
+					# Сохранение данных пользователей.
+					WriteJSON("Data/Avito.json", self.__UsersData)
+					# Переключение состояния успешности.
+					IsSuccess = True
+					
+				else:
+					# Номер профиля.
+					Profile = int(self.__AvitoUserBufer["profile"])
+					# Запись в лог ошибки: пользователь с таким идентификатором уже существует.
+					logging.error(f"Profile {Profile} already exists.")
 				
 			else:
 				# Помещение пользователя в словарь.
@@ -266,6 +302,52 @@ class BotManager:
 	# Удаляет задачу.
 	def cmd_deltask(self, TaskID: str) -> bool:
 		return self.__Planner.removeTask(TaskID)
+	
+	# Создаёт задачу с синтаксисом cron.
+	def cmd_newtask(self, Profile: str, ItemID: str, Price: str, Day: str, Time: tuple) -> bool:
+		# Состояние: успешна ли регистрация.
+		IsSuccess = True
+		# Состояние: включён ли режим дельта-цены.
+		IsDelta = False
+		# Тип задачи.
+		Type = "cron"
+		
+		# Если указана дата.
+		if Day.count('.') == 2:
+			# Инвертированиедаты.
+			Day = ".".join(reversed(Day.split('.')))
+			# Изменение типа задачи.
+			Type = "date"
+			
+		else:
+			# Перевод RU названия дня недели в EN.
+			Day = self.__Days[Day.lower()]
+
+		# Если указан знак, включить дельта-режим.
+		if '+' in Price or '-' in Price:
+			IsDelta = True
+			
+		# Словарь описания.
+		Description = {
+			"active": True,
+			"method": {
+				"profile": Profile,
+				"item-id": ItemID,
+				"price": int(Price),
+				"delta": IsDelta
+			},
+			"trigger": {
+				"type": Type,
+				"day": Day,
+				"hour": Time[0],
+				"minute": Time[1],
+				"repeat": True if Type == "cron" else False
+			}
+		}
+		# Создание задачи.
+		self.__CreateTask(Description)	
+
+		return IsSuccess
 
 	# Изменяет стоимость аренды.
 	def cmd_price(self, UserID: str, ItemID: str, Price: str) -> bool:
@@ -316,51 +398,26 @@ class BotManager:
 			IsSuccess = True
 			# Сохранение данных.
 			WriteJSON("Data/Avito.json", self.__UsersData)
-		
+			# Запись в лог сообщения: пользователь удалён.
+			logging.info(f"Profile \"{OldID}\" renamed to \"{NewID}\".")
+			
 		return IsSuccess
 	
-	# Создаёт задачу с синтаксисом cron.
-	def cmd_newtask(self, Profile: str, ItemID: str, Price: str, Day: str, Time: tuple) -> bool:
+	# Удаляет пользователя.
+	def cmd_unregister(self, UserID: str) -> bool:
 		# Состояние: успешна ли регистрация.
-		IsSuccess = True
-		# Состояние: включён ли режим дельта-цены.
-		IsDelta = False
-		# Тип задачи.
-		Type = "cron"
+		IsSuccess = False
 		
-		# Если указана дата.
-		if Day.count('.') == 2:
-			# Инвертированиедаты.
-			Day = ".".join(reversed(Day.split('.')))
-			# Изменение типа задачи.
-			Type = "date"
-			
-		else:
-			# Перевод RU названия дня недели в EN.
-			Day = self.__Days[Day.lower()]
-
-		# Если указан знак, включить дельта-режим.
-		if '+' in Price or '-' in Price:
-			IsDelta = True
-			
-		# Словарь описания.
-		Description = {
-			"active": True,
-			"method": {
-				"profile": Profile,
-				"item-id": ItemID,
-				"price": int(Price),
-				"delta": IsDelta
-			},
-			"trigger": {
-				"type": Type,
-				"day": Day,
-				"hour": Time[0],
-				"minute": Time[1],
-				"repeat": True if Type == "cron" else False
-			}
-		}
-		# Создание задачи.
-		self.__CreateTask(Description)	
-
+		# Если такой пользователь существует.
+		if UserID in self.__UsersData.keys():
+			# Удаление данных пользователя.
+			del self.__UsersData[UserID]
+			del self.__Users[UserID]
+			# Переключить состояние.
+			IsSuccess = True
+			# Сохранение данных.
+			WriteJSON("Data/Avito.json", self.__UsersData)
+			# Запись в лог сообщения: пользователь удалён.
+			logging.info(f"Profile \"{UserID}\" unregistered.")
+		
 		return IsSuccess

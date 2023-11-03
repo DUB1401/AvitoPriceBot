@@ -8,12 +8,12 @@ import logging
 class Scheduler:
 	
 	# Конструктор.
-	def __init__(self, TasksJSON: dict):
+	def __init__(self, Settings: dict, TasksJSON: dict):
 		
 		#---> Генерация динамических свойств.
 		#==========================================================================================#
 		# Планировщик задач.
-		self.__Planner = BackgroundScheduler()
+		self.__Planner = BackgroundScheduler({"apscheduler.timezone": Settings["timezone"]})
 		# Словарь задач.
 		self.__Tasks = TasksJSON
 		
@@ -21,9 +21,7 @@ class Scheduler:
 		self.__Planner.start()
 	
 	# Создаёт задачу с синтаксисом cron.
-	def createCronTask(self, Task: any, Profile: str, ItemID: int, Price: int, IsDelta: bool, DayOfWeek: str, Time: tuple, ID: str | None = None) -> bool:
-		# Состояние: успешна ли операция.
-		IsSuccess = True
+	def createCronTask(self, Task: any, Profile: str, ItemID: int, Price: int, IsDelta: bool, DayOfWeek: str, Time: tuple, ID: str | None = None):
 		# Словарь описания.
 		Description = {
 			"active": True,
@@ -48,7 +46,7 @@ class Scheduler:
 			self.__Tasks["last-id"] += 1
 			# Присвоение ID.
 			ID = str(self.__Tasks["last-id"])
-			
+		
 		# Остановка планировщика.
 		self.__Planner.pause()
 		# Создание задачи.
@@ -67,13 +65,11 @@ class Scheduler:
 		self.__Tasks["tasks"][ID] = Description
 		# Перезапись файла.
 		WriteJSON("Data/Tasks.json", self.__Tasks)
-
-		return IsSuccess
-	
+		# Запись в лог сообщения: задача создана.
+		logging.info(f"Task with ID {ID} initialized. Trigger type: \"cron\".")
+		
 	# Создаёт задачу с синтаксисом даты.
-	def createDateTask(self, Task: any, Profile: str, ItemID: int, Price: int, IsDelta: bool, Date: tuple, Time: tuple, ID: str | None = None) -> bool:
-		# Состояние: успешна ли операция.
-		IsSuccess = True
+	def createDateTask(self, Task: any, Profile: str, ItemID: int, Price: int, IsDelta: bool, Date: tuple, Time: tuple, ID: str | None = None):
 		# Конвертирование даты.
 		Date = Date.split('.')
 		Date = (int(Date[0]), int(Date[1]), int(Date[2]))
@@ -118,8 +114,8 @@ class Scheduler:
 		self.__Tasks["tasks"][ID] = Description
 		# Перезапись файла.
 		WriteJSON("Data/Tasks.json", self.__Tasks)
-
-		return IsSuccess
+		# Запись в лог сообщения: задача создана.
+		logging.info(f"Task with ID {ID} initialized. Trigger type: \"date\".")
 
 	# Возвращает словарь задач.
 	def getTasks(self) -> dict:
