@@ -101,7 +101,7 @@ def ProcessCommandStart(Message: types.Message):
 	HelpMessage += "*newtask* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[DAY\]\ \[HOUR\]\ \[MINUTE\]\n" + "Описание: _Создаёт задачу с отложенным или регулярным выполнением\._\n\n" 
 	HelpMessage += "*price* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\]\n" + "Описание: _Моментально задаёт новую стоимость\._\n\n"
 	HelpMessage += "*rename* \[OLD\_ACCOUNT\] \[NEW\_ACCOUNT\]\n" + "Описание: _Изменяет идентификатор пользователя\._\n\n" 
-	HelpMessage += "*unregister* \[ACCOUNT\]\n" + "Описание: _Удаляет профиль\._\n\n" 
+	HelpMessage += "*unregister* \[ACCOUNT\]\n" + "Описание: _Удаляет профиль и связанные с ним задачи\._\n\n" 
 	
 	# Проверка авторизации пользователя.
 	if BotData.login(Message.from_user.id) == True:
@@ -388,7 +388,7 @@ def ProcessTextMessage(Message: types.Message):
 									# Отправка сообщения: идентификатор успешно изменён.
 									Bot.send_message(
 										Message.chat.id,
-										f"Идентификатор пользователя Авито успешно изменён\. Используйте теперь *{CommandData[2]}* для исполнения команд от имени этого аккаунта\.",
+										f"Идентификатор профиля Авито успешно изменён\. Используйте теперь *{CommandData[2]}* для исполнения команд от имени этого аккаунта\.",
 										parse_mode = "MarkdownV2",
 										disable_web_page_preview = True
 									)
@@ -397,7 +397,7 @@ def ProcessTextMessage(Message: types.Message):
 									# Отправка сообщения: не удалось изменить идентификатор.
 									Bot.send_message(
 										Message.chat.id,
-										f"Не удалось изменить идентификатор для пользователя *{CommandData[1]}*\.",
+										f"Не удалось изменить идентификатор для профиля *{CommandData[1]}*\.",
 										parse_mode = "MarkdownV2",
 										disable_web_page_preview = True
 									)
@@ -412,7 +412,7 @@ def ProcessTextMessage(Message: types.Message):
 									# Отправка сообщения: идентификатор успешно изменён.
 									Bot.send_message(
 										Message.chat.id,
-										f"Профиль *{CommandData[1]}* удалён\.\n\n*⚠️ Предупреждение*\n\nЗадачи\, созданные для этого профиля\, остаются активными\. Удалите их вручную или назначьте для другого профиля идентификатор *{CommandData[1]}*\.",
+										f"Профиль *{CommandData[1]}* и связанные с ним задачи удалены\.",
 										parse_mode = "MarkdownV2",
 										disable_web_page_preview = True
 									)

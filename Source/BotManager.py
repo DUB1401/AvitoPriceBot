@@ -147,6 +147,22 @@ class BotManager:
 				# Запись в лог сообщения: задача пропущена.
 				logging.info(f"Task with ID {TaskID} inactive. Skipped.")
 
+	# Удаляет связанные с профилем задачи.
+	def __RemoveConnectedTasks(self, ProfileID: str):
+		# Словарь описаний задач.
+		Tasks = self.__Planner.getTasks()
+		# Список ID задач.
+		TasksKeys = list(Tasks.keys())
+		
+		# Для каждой задачи.
+		for TaskID in TasksKeys:
+			print(Tasks[TaskID]["method"]["profile"])
+			print(ProfileID)
+			# Если для задачи задан удаляемый профиль.
+			if Tasks[TaskID]["method"]["profile"] == ProfileID:
+				# Удаление задачи.
+				self.cmd_deltask(TaskID)
+
 	# Выполняет задачу один раз.
 	def __StartOnceTask(self, Profile: str, ItemID: str, Price: int, IsDelta: bool, ID: str):
 		# Запуск задачи.
@@ -419,5 +435,7 @@ class BotManager:
 			WriteJSON("Data/Avito.json", self.__UsersData)
 			# Запись в лог сообщения: пользователь удалён.
 			logging.info(f"Profile \"{UserID}\" unregistered.")
+			# Удаление связанных задач.
+			self.__RemoveConnectedTasks(UserID)
 		
 		return IsSuccess

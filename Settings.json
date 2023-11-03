@@ -2,6 +2,9 @@
 	"token": "",
 	"bot-password": "",
 	"timezone": "MSK",
+	"bot-password": "1234",
+	"timezone": "Europe/Moscow",
 	"use-supervisor": true,
+	"recycling-id": true,
 	"delay": 1
 }
