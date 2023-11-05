@@ -1,6 +1,9 @@
 from dublib.Methods import ReadJSON, RenameDictionaryKey, WriteJSON
+from Source.DateParser import DateParser
 from Source.Scheduler import Scheduler
+from Source.Functions import GetDates
 from Source.Avito import AvitoUser
+from time import sleep
 
 import logging
 import enum
@@ -118,7 +121,7 @@ class BotManager:
 		# Чтение файла задач.
 		Tasks = ReadJSON("Data/Tasks.json")
 		# Инициализация планировщика.
-		self.__Planner = Scheduler(self.__Settings, Tasks)
+		self.__Planner = Scheduler(self.__Settings, Tasks, self.__Users)
 		# Запись в лог сообщения: количество загруженных задач.
 		logging.info("Tasks count: " + str(len(Tasks["tasks"].keys())) + ".")
 		
@@ -146,6 +149,21 @@ class BotManager:
 			else:
 				# Запись в лог сообщения: задача пропущена.
 				logging.info(f"Task with ID {TaskID} inactive. Skipped.")
+				
+	# Удаляет связанные с профилем работы.
+	def __RemoveConnectedJobs(self, ProfileID: str):
+		# Список описаний работ.
+		Jobs = self.__Planner.getJobs()
+		# Список ID задач.
+		JobsKeys = self.__Planner.getJobsID()
+		
+		# Для каждой задачи.
+		for JobID in JobsKeys:
+
+			# Если для задачи задан удаляемый профиль.
+			if Jobs[JobID]["profile"] == ProfileID:
+				# Удаление работы.
+				self.cmd_deljob(JobID)
 
 	# Удаляет связанные с профилем задачи.
 	def __RemoveConnectedTasks(self, ProfileID: str):
@@ -156,8 +174,7 @@ class BotManager:
 		
 		# Для каждой задачи.
 		for TaskID in TasksKeys:
-			print(Tasks[TaskID]["method"]["profile"])
-			print(ProfileID)
+
 			# Если для задачи задан удаляемый профиль.
 			if Tasks[TaskID]["method"]["profile"] == ProfileID:
 				# Удаление задачи.
@@ -315,9 +332,116 @@ class BotManager:
 	# >>>>> КОМАНДЫ <<<<< #
 	#==========================================================================================#
 
+	# Задаёт свойства для дней недели в календаре текущего месяца.
+	def cmd_calendar(self, UserID: str, ItemID: str, Price: str, PerGuestExtraPrice: str, DaysOfWeek: str) -> bool:
+		# Состояние: успешна ли регистрация.
+		IsSuccess = False
+		# Состояние: используется дельта.
+		IsDelta = False
+		
+		# Если присутствует знак, то включить режим изменения по дельте.
+		if '+' in Price or '-' in Price:
+			IsDelta = True
+
+		try:
+			# Преобразование цены в целочисленный тип.
+			Price = int(Price)
+			
+		except Exception:
+			# Обнуление цены.
+			Price = None
+			
+		# Если такой пользователь не авторизован.
+		if UserID not in self.__Users.keys():
+			# Запись в лог ошибки: не удалось найти пользователя с указанным идентификатором.
+			logging.error(f"Unable to find user with identificator: \"{UserID}\".")
+			
+		# Если цена указана в неверном формате.
+		elif Price == None:
+			# Запись в лог ошибки: не удалось найти пользователя с указанным идентификатором.
+			logging.error(f"Uncorrect price.")
+			
+		else:
+			# Список дат.
+			Dates = GetDates(DaysOfWeek)
+			
+			# Для каждой даты.
+			for Date in Dates:
+				# Изменение свойств для даты.
+				IsSuccess = self.__Users[UserID].setCalendarDayProperties(ItemID, Date, Price, IsDelta, PerGuestExtraPrice = int(PerGuestExtraPrice))
+				# Выжидание интервала.
+				sleep(0.1)
+				
+				# Если не удалось.
+				if IsSuccess == False:
+					# Выброс исключения.
+					raise Exception("Unable to change calendar day properties.")
+		
+		return IsSuccess
+
+	# Задаёт свойства для определённого дня в календаре.
+	def cmd_day(self, UserID: str, ItemID: str, Price: str, PerGuestExtraPrice: str, Date: DateParser) -> bool:
+		# Состояние: успешна ли регистрация.
+		IsSuccess = False
+		# Состояние: используется дельта.
+		IsDelta = False
+		
+		# Если присутствует знак, то включить режим изменения по дельте.
+		if '+' in Price or '-' in Price:
+			IsDelta = True
+
+		try:
+			# Преобразование цены в целочисленный тип.
+			Price = int(Price)
+			
+		except Exception:
+			# Обнуление цены.
+			Price = None
+			
+		# Если такой пользователь не авторизован.
+		if UserID not in self.__Users.keys():
+			# Запись в лог ошибки: не удалось найти пользователя с указанным идентификатором.
+			logging.error(f"Unable to find user with identificator: \"{UserID}\".")
+			
+		# Если цена указана в неверном формате.
+		elif Price == None:
+			# Запись в лог ошибки: не удалось найти пользователя с указанным идентификатором.
+			logging.error(f"Uncorrect price.")
+			
+		else:
+			# Изменение свойств для даты.
+			IsSuccess = self.__Users[UserID].setCalendarDayProperties(ItemID, Date, Price, IsDelta, PerGuestExtraPrice = int(PerGuestExtraPrice))
+		
+		return IsSuccess
+
+	# Удаляет работу.
+	def cmd_deljob(self, JobID: str) -> bool:
+		return self.__Planner.removeJob(int(JobID))
+
 	# Удаляет задачу.
 	def cmd_deltask(self, TaskID: str) -> bool:
 		return self.__Planner.removeTask(TaskID)
+	
+	# Создаёт работу.
+	def cmd_newjob(self, Profile: str, ItemID: str, Price: str, ExtraPrice: str, Hour: str) -> bool:
+		# Состояние: успешна ли регистрация.
+		IsSuccess = True
+		# Состояние: используется дельта.
+		IsDelta = False
+		
+		# Если присутствует знак, то включить режим изменения по дельте.
+		if '+' in Price or '-' in Price:
+			IsDelta = True
+		
+		try:
+			# Создание работы.
+			self.__Planner.createJob(Profile, int(ItemID), int(Price), IsDelta, int(ExtraPrice), int(Hour))
+			
+		except Exception:
+			# Переключение состояния.
+			IsSuccess = False
+			
+		return IsSuccess
 	
 	# Создаёт задачу с синтаксисом cron.
 	def cmd_newtask(self, Profile: str, ItemID: str, Price: str, Day: str, Time: tuple) -> bool:
@@ -435,7 +559,8 @@ class BotManager:
 			WriteJSON("Data/Avito.json", self.__UsersData)
 			# Запись в лог сообщения: пользователь удалён.
 			logging.info(f"Profile \"{UserID}\" unregistered.")
-			# Удаление связанных задач.
+			# Удаление связанных задач и работ.
 			self.__RemoveConnectedTasks(UserID)
+			self.__RemoveConnectedJobs(UserID)
 		
 		return IsSuccess

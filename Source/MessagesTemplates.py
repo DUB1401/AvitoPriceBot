@@ -13,9 +13,34 @@ class QueueTypes(enum.Enum):
 	Profiles = "profiles"
 	# Задачи.
 	Tasks = "tasks"
+	# Работы.
+	Jobs = "jobs"
 
 # Шаблоны сообщений.
 class MessagesTemplates:
+	
+	# Строит список описаний работ.
+	def __BuildJobsDescriptions(self, Jobs: list) -> list[str]:
+		# Описания работ.
+		Descriptions = list()
+		
+		# Для каждой работы.
+		for Job in Jobs:
+			# Конверитрование цены в строку.
+			Price = str(Job["price"])
+			# Если используется полодительная дельта, добавить плюс.
+			if Job["price"] > 0 and Job["delta"] == True: Price = "+" + Price
+			# Сгенерировать описание пользователя.
+			Bufer = "Идентификатор: " + str(Job["id"]) + "\n"
+			Bufer += "Номер профиля: " + str(Job["profile"]) + "\n"
+			Bufer += "ID объявления: " + str(Job["item-id"]) + "\n"
+			Bufer += "Стоимость: " + EscapeCharacters(Price) + "\n"
+			Bufer += "Доплата за гостя: " + str(Job["extra-price"]) + "\n"
+			Bufer += "Время проверки: " + EscapeCharacters(str(Job["hour"]).rjust(2, '0') + ":00") + "\n"
+			# Сохранение буфера.
+			Descriptions.append(Bufer)
+		
+		return Descriptions
 	
 	# Строит список описаний профилей.
 	def __BuildProfilesDescriptions(self, UsersData: dict) -> list[str]:
@@ -71,8 +96,23 @@ class MessagesTemplates:
 	def __MakeQueue(self, Type: QueueTypes, Data: any, Header: str, ZeroItemsMessage: str) -> list[str]:
 		# Список сообщений.
 		Messages = list()
-		# Получение форматированного списка описаний.
-		Descriptions = self.__BuildTasksDescriptions(Data) if Type == QueueTypes.Tasks else self.__BuildProfilesDescriptions(Data)
+		# Список описаний.
+		Descriptions = list()
+		
+		# Проверка типа данных.
+		match Type:
+			
+			# Составление списка описаний работ.
+			case QueueTypes.Jobs:
+				Descriptions = self.__BuildJobsDescriptions(Data)
+				
+			# Составление списка описаний профилей.
+			case QueueTypes.Profiles:
+				Descriptions = self.__BuildProfilesDescriptions(Data)
+				
+			# Составление списка описаний задач.
+			case QueueTypes.Tasks:
+				Descriptions = self.__BuildTasksDescriptions(Data) 
 		
 		# Если задач не запланировано.
 		if len(Descriptions) == 0:
@@ -127,6 +167,23 @@ class MessagesTemplates:
 		self.__Bot = Bot
 		# Количество описаний в сообщении.
 		self.__PagesFactor = 10
+		
+	# Отправляет сообщения: список запланированных задач.
+	def Jobs(self, Jobs: list, ChatID: int):
+		# Очередь сообщений описаний.
+		Messages = self.__MakeQueue(
+			Type = QueueTypes.Jobs,
+			Data = Jobs,
+			Header = "⚒️ Список работ",
+			ZeroItemsMessage = "*⚒️ Список работ*\n\nНичего не запланировано\."
+		)
+					
+		# Отправка каждого сообщения.
+		for Message in Messages:
+			# Отправка сообщения: необходимо авторизоваться.
+			self.__Bot.send_message(ChatID, Message, parse_mode = "MarkdownV2")
+			# Выжидание паузы.
+			sleep(0.1)
 		
 	# Отправляет сообщения: список профилей.
 	def List(self, UserData: dict, ChatID: int):

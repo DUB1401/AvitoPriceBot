@@ -1,6 +1,8 @@
 from apscheduler.schedulers.background import BackgroundScheduler
+from Source.DateParser import DateParser
 from dublib.Methods import WriteJSON
 from datetime import datetime
+from time import sleep
 
 import logging
 
@@ -8,14 +10,14 @@ import logging
 class Scheduler:
 	
 	# Генерирует ID задачи согласно настройкам.
-	def __GenerateTaskID(self) -> str:
+	def __GenerateID(self, Type: str) -> str:
 		# ID задачи.
-		TaskID = None
-		
+		ID = None
+
 		# Если запрещено повторное использование ID.
 		if self.__Settings["recycling-id"] == False:
 			# Инкремент последнего ID.
-			TaskID = str(self.__Tasks["last-id"] + 1)
+			ID = str(self.__Tasks[f"last-{Type}-id"] + 1)
 			
 		else:
 			# Текущий ID.
@@ -23,37 +25,110 @@ class Scheduler:
 			
 			# Всегда.
 			while True:
+				# ID задач или работ. 
+				ListID = self.__Tasks[f"{Type}s"].keys() if Type == "task" else self.getJobsID()
 				
 				# Если текущий ID не обнаружен в файле описания задач.
-				if str(CurrentID) not in self.__Tasks["tasks"].keys():
+				if CurrentID not in ListID:
 					# Задать текущий ID.
-					TaskID = str(CurrentID)
+					ID = str(CurrentID)
 					# Остановка цикла.
 					break
 				
 				# Если достигнут последний ID.
-				elif CurrentID > self.__Tasks["last-id"]:
+				elif CurrentID > self.__Tasks[f"last-{Type}-id"]:
 					# Инкремент последнего ID.
-					TaskID = str(self.__Tasks["last-id"] + 1)
+					ID = str(self.__Tasks[f"last-{Type}-id"] + 1)
 					# Остановка цикла.
 					break
 				
 				# Инкремент ID.
 				CurrentID += 1
 		
-		return TaskID
+		return ID
 	
+	# Удаляет работу из описаний.
+	def __RemoveJob(self, TargetID: int):
+		# Копирование описаний работ.
+		Jobs = self.__Tasks["jobs"].copy()
+		
+		# Для каждой работы.
+		for Index in range(0, len(Jobs)):
+			
+			# Если найдена работа с нужным ID.
+			if Jobs[Index]["id"] == TargetID:
+				# Удалить работу.
+				self.__Tasks["jobs"].pop(Index)
+			
 	# Сохраняет задачи в файл.
 	def __Save(self):
-		# Поиск максимального ID.
-		MaxID = int(max(list(map(int, self.__Tasks["tasks"].keys()))))
-		# Перезапись последнего ID.
-		self.__Tasks["last-id"] = MaxID
-		# Перезапись файла.
-		WriteJSON("Data/Tasks.json", self.__Tasks)
+		# Максимальный ID задачи.
+		MaxTaskID = 0
+		# Максимальный ID работы.
+		MaxJobID = 0
+		# Список ключей задач.
+		TasksKeys = list(map(int, self.__Tasks["tasks"].keys()))
+		# Список ID работ.
+		JobsID = self.getJobsID()
+
+		# Если есть задачи.
+		if len(TasksKeys) > 0:
+			# Поиск максимального ID.
+			MaxTaskID = int(max(TasksKeys))
+			
+		# Если есть работы.
+		if len(JobsID) > 0:
+			# Поиск максимального ID.
+			MaxJobID = int(max(JobsID))
+			
+		# Перезапись последнего ID задачи.
+		self.__Tasks["last-task-id"] = MaxTaskID
+		# Перезапись последнего ID работы.
+		self.__Tasks["last-job-id"] = MaxJobID
+		# Индекс повтора попытки сохранения.
+		Retry = 0
+		
+		# Всегда.
+		while Retry < 3:
+			
+			try:
+				# Перезапись файла.
+				WriteJSON("Data/Tasks.json", self.__Tasks)
+				# Остановка цикла.
+				break
+				
+			except Exception:
+				# Запись в лог ошибки:
+				logging.error("Unable to save \"Tasks.json\".")
+				# Инкремент индекса повтора.
+				Retry += 1
+		
+	# Поток-обработчик работ.
+	def __Worker(self):
+		# Получение текущего часа.
+		Hour = datetime.now().hour
+		
+		# Для каждой работы.
+		for Job in self.__Tasks["jobs"]:
+			# Формирование даты.
+			Date = DateParser(str(datetime.now().date()).replace('-', '.'))
+				
+			# Если час совпадает и на дату нет брони.
+			if Job["hour"] == Hour and self.__Users[Job["profile"]].checkBooking(Date, Job["profile"], Job["item-id"]) == False:
+				
+				# Изменить свойства для текущего дня.
+				self.__Users[Job["profile"]].setCalendarDayProperties(
+					ItemID = Job["item-id"],
+					Date = Date,
+					Price = Job["price"],
+					IsDelta = Job["delta"],
+					ExtraPrice = Job["extra-price"]
+				)
+				# Выжидание интервала.
+				sleep(1)
 	
 	# Конструктор.
-	def __init__(self, Settings: dict, TasksJSON: dict):
+	def __init__(self, Settings: dict, TasksJSON: dict, Users: dict):
 		
 		#---> Генерация динамических свойств.
 		#==========================================================================================#
@@ -62,7 +137,21 @@ class Scheduler:
 		# Глоабльные настройки.
 		self.__Settings = Settings.copy()
 		# Словарь задач.
-		self.__Tasks = TasksJSON
+		self.__Tasks = TasksJSON.copy()
+		# Пользователи.
+		self.__Users = Users
+		
+		# Если заданы работы.
+		if len(TasksJSON["jobs"]) > 0:
+			# Создание задачи.
+			self.__Planner.add_job(
+				func = self.__Worker,
+				trigger = "cron",
+				id = "WORKER",
+				hour = "*"
+			)
+			# Немедленный запуск.
+			self.__Worker()
 		
 		# Запуск планировщика.
 		self.__Planner.start()
@@ -70,7 +159,7 @@ class Scheduler:
 	# Создаёт задачу с синтаксисом cron.
 	def createCronTask(self, Task: any, Profile: str, ItemID: int, Price: int, IsDelta: bool, DayOfWeek: str, Time: tuple, ID: str | None = None):
 		# Если задача новая, то сгенерировать ID.
-		if ID == None: ID = self.__GenerateTaskID()
+		if ID == None: ID = self.__GenerateID("task")
 		# Словарь описания.
 		Description = {
 			"active": True,
@@ -113,7 +202,7 @@ class Scheduler:
 	# Создаёт задачу с синтаксисом даты.
 	def createDateTask(self, Task: any, Profile: str, ItemID: int, Price: int, IsDelta: bool, Date: tuple, Time: tuple, ID: str | None = None):
 		# Если задача новая, то сгенерировать ID.
-		if ID == None: ID = self.__GenerateTaskID()
+		if ID == None: ID = self.__GenerateID("task")
 		# Конвертирование даты.
 		Date = Date.split('.')
 		Date = (int(Date[0]), int(Date[1]), int(Date[2]))
@@ -153,10 +242,68 @@ class Scheduler:
 		self.__Save()
 		# Запись в лог сообщения: задача создана.
 		logging.info(f"Task with ID {ID} initialized. Trigger type: \"date\".")
+		
+	# Создаёт работу.
+	def createJob(self, Profile: str, ItemID: int, Price: int, IsDelta: bool, ExtraPrice: int, Hour: int):
+		# ID.
+		ID = self.__GenerateID("job")
+		# Описание работы.
+		Description = {
+			"id": int(ID),
+			"profile": Profile,
+			"item-id": ItemID,
+			"price": Price,
+			"delta": IsDelta,
+			"extra-price": ExtraPrice,
+			"hour": Hour
+		}
+
+		# Добавление работы в описание.
+		self.__Tasks["jobs"].append(Description)
+		# Сохранение файла.
+		self.__Save()
+
+	# Возвращает список работ.
+	def getJobs(self) -> list[dict]:
+		return self.__Tasks["jobs"]
+	
+	# Возвращает список ID работ.
+	def getJobsID(self) -> list[int]:
+		# Список ID.
+		ID = list()
+
+		# Для каждой работы.
+		for Job in self.__Tasks["jobs"]:
+			# Записать ID.
+			ID.append(Job["id"])
+			
+		return ID
 
 	# Возвращает словарь задач.
 	def getTasks(self) -> dict:
-		return self.__Tasks["tasks"]
+		return self.__Tasks["tasks"].copy()
+	
+	# Удаляет работу.
+	def removeJob(self, JobID: int) -> bool:
+		# Состояние: успешна ли операция.
+		IsSuccess = True
+		
+		# Если задача существует.
+		if JobID in self.getJobsID():
+			# Удаление записи о работе.
+			self.__RemoveJob(JobID)
+			# Сохранение файла.
+			self.__Save()
+			# Запись в лог сообщения: задача удалена.
+			logging.info(f"Job with ID {JobID} was removed.")
+			
+		else:
+			# Переключение состояния.
+			IsSuccess = False
+			# Запись в лог ошибки: не удалось удалить задачу.
+			logging.error(f"Unable to remove job with ID {JobID}.")
+			
+		return IsSuccess
 
 	# Удаляет задачу.
 	def removeTask(self, TaskID: str, OnlyJSON: bool = False) -> bool:

@@ -1,4 +1,6 @@
 {
-	"last-id": 0,
-	"tasks": {}
+	"last-task-id": 0,
+	"last-job-id": 0,
+	"tasks": {},
+	"jobs": []
 }

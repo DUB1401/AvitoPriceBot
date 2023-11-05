@@ -2,6 +2,7 @@
 
 from dublib.Methods import Cls, CheckPythonMinimalVersion, MakeRootDirectories, ReadJSON
 from Source.MessagesTemplates import MessagesTemplates
+from Source.DateParser import DateParser
 from Source.BotManager import *
 from Source.Functions import *
 from telebot import types
@@ -71,7 +72,11 @@ if type(Settings["token"]) != str or Settings["token"].strip() == "":
 
 # Список команд.
 COMMANDS = [
+	"calendar",
+	"day",
+	"deljob",
 	"deltask",
+	"newjob",
 	"newtask",
 	"price",
 	"rename",
@@ -97,11 +102,15 @@ def ProcessCommandStart(Message: types.Message):
 	# Сообщение-справка.
 	HelpMessage = "*📗 Справка*\n\n"
 	# Добавление описания команд.
+	HelpMessage += "*calendar* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[EXTRA\_PRICE\] \[DAYS\]\n" + "Описание: _Изменяет свойства ренты для выбранных дней недели текущего месяца\._\n\n" 
+	HelpMessage += "*day* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[EXTRA\_PRICE\] \[DATE\]\n" + "Описание: _Изменяет свойства ренты для определённой даты\._\n\n" 
+	HelpMessage += "*deljob* \[JOB\_ID\]\n" + "Описание: _Удаляет работу\._\n\n" 
 	HelpMessage += "*deltask* \[TASK\_ID\]\n" + "Описание: _Удаляет задачу\._\n\n" 
-	HelpMessage += "*newtask* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[DAY\]\ \[HOUR\]\ \[MINUTE\]\n" + "Описание: _Создаёт задачу с отложенным или регулярным выполнением\._\n\n" 
-	HelpMessage += "*price* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\]\n" + "Описание: _Моментально задаёт новую стоимость\._\n\n"
-	HelpMessage += "*rename* \[OLD\_ACCOUNT\] \[NEW\_ACCOUNT\]\n" + "Описание: _Изменяет идентификатор пользователя\._\n\n" 
-	HelpMessage += "*unregister* \[ACCOUNT\]\n" + "Описание: _Удаляет профиль и связанные с ним задачи\._\n\n" 
+	HelpMessage += "*newjob* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[EXTRA\_PRICE\]\ \[HOUR\]\ \n" + "Описание: _Создаёт работу, модифицирующую свойства ренты в случае отстутвия брони до указанного времени\._\n\n" 
+	HelpMessage += "*newtask* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[DAY\]\ \[HOUR\]\ \[MINUTE\]\n" + "Описание: _Создаёт задачу с отложенным или регулярным выполнением, изменяющую базовую стоимость ренты\._\n\n" 
+	HelpMessage += "*price* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\]\n" + "Описание: _Моментально задаёт новую базовую стоимость\._\n\n"
+	HelpMessage += "*rename* \[OLD\_ACCOUNT\] \[NEW\_ACCOUNT\]\n" + "Описание: _Изменяет идентификатор профиля\._\n\n" 
+	HelpMessage += "*unregister* \[ACCOUNT\]\n" + "Описание: _Удаляет профиль, а также связанные с ним задачи и работы\._\n\n" 
 	
 	# Проверка авторизации пользователя.
 	if BotData.login(Message.from_user.id) == True:
@@ -170,6 +179,19 @@ def ProcessCommandStart(Message: types.Message):
 		parse_mode = "MarkdownV2",
 		disable_web_page_preview = True
 	)
+	
+# Обработка команды: jobs.
+@Bot.message_handler(commands=["jobs"])
+def ProcessCommandStart(Message: types.Message):
+
+	# Проверка авторизации пользователя.
+	if BotData.login(Message.from_user.id) == True:
+		# Отправка сообщения: список запланированных задач.
+		Messages.Jobs(BotData.scheduler().getJobs(), Message.chat.id)
+	
+	else:
+		# Отправка сообщения: необходимо авторизоваться.
+		Messages.UserAuthRequired(Message.chat.id)
 	
 # Обработка команды: tasks.
 @Bot.message_handler(commands=["tasks"])
@@ -306,6 +328,82 @@ def ProcessTextMessage(Message: types.Message):
 						# Проверка соответствия команд.
 						match Command:
 							
+							# Обработка команды: calendar.
+							case "calendar":
+								# Попытка выполнить команду.
+								Result = BotData.cmd_calendar(CommandData[1], CommandData[2], CommandData[3], CommandData[4], CommandData[5])
+								
+								# Если выполнение успешно.
+								if Result == True:
+									# Отправка сообщения: свойства календаря успешно изменены.
+									Bot.send_message(
+										Message.chat.id,
+										f"Для объявления *{CommandData[2]}* на текущий месяц заданы новые свойства каледнаря\.",
+										parse_mode = "MarkdownV2",
+										disable_web_page_preview = True
+									)
+									
+								else:
+									# Отправка сообщения: не удалось изменить свойства календаря.
+									Bot.send_message(
+										Message.chat.id,
+										f"Не удалось изменить свойства в объявлении *{CommandData[2]}* для текущего месяца\.",
+										parse_mode = "MarkdownV2",
+										disable_web_page_preview = True
+									)
+							
+							# Обработка команды: day.
+							case "day":
+								# Парсинг даты.
+								Date = DateParser(CommandData[5])
+								# Попытка выполнить команду.
+								Result = BotData.cmd_day(CommandData[1], CommandData[2], CommandData[3], CommandData[4], Date)
+								# Дата.
+								Date = EscapeCharacters(Date.date())
+								
+								# Если выполнение успешно.
+								if Result == True:
+									# Отправка сообщения: свойства даты изменены.
+									Bot.send_message(
+										Message.chat.id,
+										f"Для объявления *{CommandData[2]}* в дату _{Date}_ заданы новые свойства\.",
+										parse_mode = "MarkdownV2",
+										disable_web_page_preview = True
+									)
+									
+								else:
+									# Отправка сообщения: не удалось изменить свойства даты.
+									Bot.send_message(
+										Message.chat.id,
+										f"Не удалось изменить свойства для даты _{Date}_ в объявлении *{CommandData[2]}*\.",
+										parse_mode = "MarkdownV2",
+										disable_web_page_preview = True
+									)
+									
+							# Обработка команды: deljob.
+							case "deljob":
+								# Попытка выполнить команду.
+								Result = BotData.cmd_deljob(CommandData[1])
+								
+								# Если выполнение успешно.
+								if Result == True:
+									# Отправка сообщения: работа удалена.
+									Bot.send_message(
+										Message.chat.id,
+										f"Работа удалена.",
+										parse_mode = None,
+										disable_web_page_preview = True
+									)
+									
+								else:
+									# Отправка сообщения: не удалось удалить работу.
+									Bot.send_message(
+										Message.chat.id,
+										f"Не удалось удалить работу. Проверьте корректность указанного идентификатора.",
+										parse_mode = None,
+										disable_web_page_preview = True
+									)
+							
 							# Обработка команды: deltask.
 							case "deltask":
 								# Попытка выполнить команду.
@@ -326,6 +424,30 @@ def ProcessTextMessage(Message: types.Message):
 									Bot.send_message(
 										Message.chat.id,
 										f"Не удалось удалить задачу. Проверьте корректность указанного идентификатора.",
+										parse_mode = None,
+										disable_web_page_preview = True
+									)
+									
+							# Обработка команды: newjob.
+							case "newjob":
+								# Попытка выполнить команду.
+								Result = BotData.cmd_newjob(CommandData[1], CommandData[2], CommandData[3], CommandData[4], CommandData[5])
+								
+								# Если выполнение успешно.
+								if Result == True:
+									# Отправка сообщения: идентификатор успешно изменён.
+									Bot.send_message(
+										Message.chat.id,
+										f"Работа создана.",
+										parse_mode = None,
+										disable_web_page_preview = True
+									)
+									
+								else:
+									# Отправка сообщения: не удалось изменить идентификатор.
+									Bot.send_message(
+										Message.chat.id,
+										f"Не удалось создать работу.",
 										parse_mode = None,
 										disable_web_page_preview = True
 									)

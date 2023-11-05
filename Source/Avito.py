@@ -1,3 +1,4 @@
+from Source.DateParser import DateParser
 from threading import Thread
 from time import sleep
 
@@ -129,6 +130,34 @@ class AvitoUser:
 		# Если указано настройками, запустить поток надзиратель.
 		if Settings["use-supervisor"] == True:
 			self.__Supervisor.start()
+			
+	# Проверяет, забронирована ли квартира на сегодня.
+	def checkBooking(self, Date: DateParser, Profile: int | str, ItemID: int | str) -> bool:
+		# Состояние: забронирована ли квартира.
+		IsBooking = False
+		# Преобразование даты в нужный формат.
+		Date = Date.date("-", True, True)
+		# Отправка запроса на получение броней.
+		Response = self.__Session.get(f"https://api.avito.ru/realty/v1/accounts/{Profile}/items/{ItemID}/bookings?date_start={Date}&date_end={Date}&with_unpaid=true")
+		
+		# Проверка ответа.
+		if Response.status_code != 200:
+			# Запись в лог ошибки: не удалось изменить свойства.
+			logging.error(f"Profile: {self.__ProfileID}. Unable to check bookings.")
+			
+		else:
+			# Список броней.
+			Bookings = dict(json.loads(Response.text))["bookings"]
+			
+			# Если брони есть.
+			if len(Bookings) > 0:
+				# Переключение состояния.
+				IsBooking = True
+		
+			# Запись в лог сообщения: свойства даты изменены.
+			logging.error(f"Profile: {self.__ProfileID}. Bookings: " + str(len(Bookings)) + ".")
+		
+		return IsBooking
 		
 	# Возвращает токен доступа.
 	def getAccessToken(self) -> str:
@@ -232,6 +261,51 @@ class AvitoUser:
 			Price = None
 
 		return Price
+	
+	# Задаёт свойства для конкретного дня.
+	def setCalendarDayProperties(self, ItemID: str, Date: DateParser, Price: int, IsDelta: bool, Duration: int = 1, ExtraPrice: int = 0) -> bool:
+		# Заголовки запроса.
+		Headers = {
+			"authorization": self.getAccessToken()
+		}
+		# Состояние: успешен ли запрос.
+		IsSuccess = True
+		# Конвертирование даты.
+		StringDate = Date.date("-", True, True)
+		# Опции запроса.
+		Options = {
+			"prices": [
+				{
+				"date_from": StringDate,
+				"date_to": StringDate,
+				"minimal_duration": int(Duration),
+				"extra_guest_fee": int(ExtraPrice),
+				"night_price": int(Price)
+				}
+			]	
+		}
+		
+		# Если не используется дельта-сумма.
+		if IsDelta == True:
+			Options["prices"][0]["night_price"] = self.getPrice(ItemID) + int(Price)
+		
+		# Отправка запроса на изменение свойств.
+		Response = self.__Session.post(f"https://api.avito.ru/realty/v1/accounts/{self.__ProfileID}/items/{ItemID}/prices", headers = Headers, json = json.loads(json.dumps(Options)))
+		
+		# Проверка ответа.
+		if Response.status_code != 200:
+			# Переключение статуса запроса.
+			IsSuccess = False
+			# Конвертирование даты.
+			StringDate = Date.date()
+			# Запись в лог ошибки: не удалось изменить свойства.
+			logging.error(f"Profile: {self.__ProfileID}. Unable to change properties for date: \"{Date}\". Response code: " + str(Response.status_code) + ".")
+			
+		else:
+			# Запись в лог сообщения: свойства даты изменены.
+			logging.error(f"Profile: {self.__ProfileID}. Properties for date \"{Date}\" changed.")
+			
+		return IsSuccess
 	
 	# Задаёт стоимость объявлению с указанным ID.
 	def setPrice(self, ItemID: str, Price: int | str) -> bool:
