@@ -75,7 +75,7 @@ calendar [ACCOUNT*] [ITEM_ID*] [PRICE*] [EXTRA_PRICE*] [DAYS*]
 	* Аргумент – строка, содержащая сокращённые наименования дней недели через запятую (_пн, вт, ср, чт, пт, сб, вс_).
 ___
 ```
-day [ACCOUNT*] [ITEM_ID*] [PRICE*] [EXTRA_PRICE*] [DATE*]
+dayprice [ACCOUNT*] [ITEM_ID*] [PRICE*] [EXTRA_PRICE*] [DATE*]
 ```
 Изменяет свойства ренты для определённой даты.
 

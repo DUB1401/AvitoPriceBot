@@ -380,7 +380,7 @@ class BotManager:
 		return IsSuccess
 
 	# Задаёт свойства для определённого дня в календаре.
-	def cmd_day(self, UserID: str, ItemID: str, Price: str, PerGuestExtraPrice: str, Date: DateParser) -> bool:
+	def cmd_dayprice(self, UserID: str, ItemID: str, Price: str, PerGuestExtraPrice: str, Date: DateParser) -> bool:
 		# Состояние: успешна ли регистрация.
 		IsSuccess = False
 		# Состояние: используется дельта.

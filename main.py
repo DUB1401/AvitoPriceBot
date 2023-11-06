@@ -103,7 +103,7 @@ def ProcessCommandStart(Message: types.Message):
 	HelpMessage = "*📗 Справка*\n\n"
 	# Добавление описания команд.
 	HelpMessage += "*calendar* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[EXTRA\_PRICE\] \[DAYS\]\n" + "Описание: _Изменяет свойства ренты для выбранных дней недели текущего месяца\._\n\n" 
-	HelpMessage += "*day* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[EXTRA\_PRICE\] \[DATE\]\n" + "Описание: _Изменяет свойства ренты для определённой даты\._\n\n" 
+	HelpMessage += "*dayprice* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[EXTRA\_PRICE\] \[DATE\]\n" + "Описание: _Изменяет свойства ренты для определённой даты\._\n\n" 
 	HelpMessage += "*deljob* \[JOB\_ID\]\n" + "Описание: _Удаляет работу\._\n\n" 
 	HelpMessage += "*deltask* \[TASK\_ID\]\n" + "Описание: _Удаляет задачу\._\n\n" 
 	HelpMessage += "*newjob* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[EXTRA\_PRICE\]\ \[HOUR\]\ \n" + "Описание: _Создаёт работу, модифицирующую свойства ренты в случае отстутвия брони до указанного времени\._\n\n" 
@@ -111,6 +111,7 @@ def ProcessCommandStart(Message: types.Message):
 	HelpMessage += "*price* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\]\n" + "Описание: _Моментально задаёт новую базовую стоимость\._\n\n"
 	HelpMessage += "*rename* \[OLD\_ACCOUNT\] \[NEW\_ACCOUNT\]\n" + "Описание: _Изменяет идентификатор профиля\._\n\n" 
 	HelpMessage += "*unregister* \[ACCOUNT\]\n" + "Описание: _Удаляет профиль, а также связанные с ним задачи и работы\._\n\n" 
+	HelpMessage += "Более подробные сведения о функциональных командах вы можете получить в репозитории [GitHub](https://github.com/DUB1401/AvitoPriceBot#%D1%84%D1%83%D0%BD%D0%BA%D1%86%D0%B8%D0%BE%D0%BD%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5-%D0%BA%D0%BE%D0%BC%D0%B0%D0%BD%D0%B4%D1%8B)\." 
 	
 	# Проверка авторизации пользователя.
 	if BotData.login(Message.from_user.id) == True:
@@ -352,12 +353,12 @@ def ProcessTextMessage(Message: types.Message):
 										disable_web_page_preview = True
 									)
 							
-							# Обработка команды: day.
-							case "day":
+							# Обработка команды: dayprice.
+							case "dayprice":
 								# Парсинг даты.
 								Date = DateParser(CommandData[5])
 								# Попытка выполнить команду.
-								Result = BotData.cmd_day(CommandData[1], CommandData[2], CommandData[3], CommandData[4], Date)
+								Result = BotData.cmd_dayprice(CommandData[1], CommandData[2], CommandData[3], CommandData[4], Date)
 								# Дата.
 								Date = EscapeCharacters(Date.date())
 								

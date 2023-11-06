@@ -36,7 +36,7 @@ class MessagesTemplates:
 			Bufer += "ID объявления: " + str(Job["item-id"]) + "\n"
 			Bufer += "Стоимость: " + EscapeCharacters(Price) + "\n"
 			Bufer += "Доплата за гостя: " + str(Job["extra-price"]) + "\n"
-			Bufer += "Время проверки: " + EscapeCharacters(str(Job["hour"]).rjust(2, '0') + ":00") + "\n"
+			Bufer += "Время проверки: _" + EscapeCharacters(str(Job["hour"]).rjust(2, '0') + ":00") + "_\n"
 			# Сохранение буфера.
 			Descriptions.append(Bufer)
 		
