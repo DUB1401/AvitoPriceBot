@@ -22,6 +22,10 @@ import os
 CheckPythonMinimalVersion(3, 10)
 # Создание папок в корневой директории.
 MakeRootDirectories(["Data", "Logs"])
+# Расположении папки установки веб-драйвера в директории скрипта.
+os.environ["WDM_LOCAL"] = "1"
+# Отключение логов WebDriver.
+os.environ["WDM_LOG"] = str(logging.NOTSET)
 
 #==========================================================================================#
 # >>>>> НАСТРОЙКА ЛОГГИРОВАНИЯ <<<<< #
@@ -51,10 +55,6 @@ logging.getLogger("apscheduler").setLevel(logging.CRITICAL)
 logging.info("====== Preparing to starting ======")
 # Запись в лог используемой версии Python.
 logging.info("Starting with Python " + str(sys.version_info.major) + "." + str(sys.version_info.minor) + "." + str(sys.version_info.micro) + " on " + str(sys.platform) + ".")
-# Расположении папки установки веб-драйвера в директории скрипта.
-os.environ["WDM_LOCAL"] = "1"
-# Отключение логов WebDriver.
-os.environ["WDM_LOG"] = str(logging.NOTSET)
 # Очистка консоли.
 Cls()
 # Чтение настроек.
@@ -565,4 +565,4 @@ def ProcessTextMessage(Message: types.Message):
 				Messages.UserAuthRequired(Message.chat.id)		
 
 # Запуск обработки запросов Telegram.
-Bot.polling(none_stop = True)
+Bot.infinity_polling()

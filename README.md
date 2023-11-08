@@ -4,11 +4,11 @@
 ## Порядок установки и использования
 1. Загрузить последний релиз. Распаковать.
 2. Установить Python версии не старше 3.10.
-3. В среду исполнения установить следующие пакеты: [dublib](https://github.com/DUB1401/dublib), [APScheduler](https://github.com/agronholm/apscheduler), [requests](https://github.com/psf/requests).
+3. В среду исполнения установить следующие пакеты: [dublib](https://github.com/DUB1401/dublib), [pyTelegramBotAPI](https://github.com/eternnoir/pyTelegramBotAPI?ysclid=loq3f2bmuz181940716), [APScheduler](https://github.com/agronholm/apscheduler).
 ```
 pip install git+https://github.com/DUB1401/dublib
+pip install pyTelegramBotAPI
 pip install APScheduler
-pip install requests
 ```
 Либо установить сразу все пакеты при помощи следующей команды, выполненной из директории скрипта.
 ```

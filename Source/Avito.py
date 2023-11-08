@@ -79,7 +79,7 @@ class AvitoUser:
 		# Постоянно.
 		while True:
 			# Выжидание 23-ёх часов.
-			sleep(23 * 60)
+			sleep(float(23 * 60))
 			# Обновление токен.
 			self.__RefreshAccessToken()
 			

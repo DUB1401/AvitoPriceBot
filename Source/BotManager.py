@@ -202,8 +202,6 @@ class BotManager:
 		self.__AllowedUsers = list()
 		# Словарь данных пользователей.
 		self.__UsersData = dict()
-		# Состояние: активен ли бот.
-		self.__IsActive = False
 		# Словарь пользователей.
 		self.__Users = dict()
 		# Планировщик.
@@ -305,20 +303,22 @@ class BotManager:
 	
 	# Вход в бота.
 	def login(self, UserID: int, Password: str | None = None) -> bool:
+		# Состояние: зарегестрирован ли пользователь.
+		IsRegistered = False
 		
 		# Если пользователь разрешён.
 		if Password == None and UserID in self.__AllowedUsers:
 			# Активация бота для пользователя.
-			self.__IsActive = True
+			IsRegistered = True
 			
 		# Если пароль для нового пользователя верен.
 		elif Password == self.__Settings["bot-password"]:
 			# Активация бота для пользователя.
-			self.__IsActive = True
+			IsRegistered = True
 			# Включение пользователя в реестр разрешённых.
 			self.__AddAllowedUser(UserID)
 			
-		return self.__IsActive
+		return IsRegistered
 	
 	# Возвращает список задач.
 	def scheduler(self) -> Scheduler:
