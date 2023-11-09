@@ -89,7 +89,7 @@ class AvitoUser:
 		# Постоянно.
 		while True:
 			# Выжидание 5-ти минут.
-			sleep(5 * 60)
+			sleep(float(5 * 60))
 
 			# Если поток обновления токена остановлен.
 			if self.__Updater.is_alive() == False:

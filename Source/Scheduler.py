@@ -2,6 +2,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from Source.DateParser import DateParser
 from dublib.Methods import WriteJSON
 from datetime import datetime
+from pytz import timezone
 from time import sleep
 
 import logging
@@ -105,14 +106,16 @@ class Scheduler:
 		
 	# Поток-обработчик работ.
 	def __Worker(self):
+		# Создание часового пояса.
+		Timezone = timezone(self.__Settings["timezone"])
 		# Получение текущего часа.
-		Hour = datetime.now().hour
+		Hour = datetime.now(Timezone).hour
 		
 		# Для каждой работы.
 		for Job in self.__Tasks["jobs"]:
 			# Формирование даты.
-			Date = DateParser(str(datetime.now().date()).replace('-', '.'))
-				
+			Date = DateParser(str(datetime.now(Timezone).date()).replace('-', '.'))
+
 			# Если час совпадает и на дату нет брони.
 			if Job["hour"] == Hour and self.__Users[Job["profile"]].checkBooking(Date, Job["profile"], Job["item-id"]) == False:
 				
@@ -125,7 +128,7 @@ class Scheduler:
 					ExtraPrice = Job["extra-price"]
 				)
 				# Выжидание интервала.
-				sleep(1)
+				sleep(self.__Settings["delay"])
 	
 	# Конструктор.
 	def __init__(self, Settings: dict, TasksJSON: dict, Users: dict):
