@@ -160,7 +160,7 @@ class Scheduler:
 		self.__Planner.start()
 	
 	# Создаёт задачу с синтаксисом cron.
-	def createCronTask(self, Task: any, Profile: str, ItemID: int, Price: int, IsDelta: bool, DayOfWeek: str, Time: tuple, ID: str | None = None):
+	def createCronTask(self, Task: any, Profile: str, ItemID: int, Price: int, IsDelta: bool, DayOfWeek: str, Time: tuple, ID: str | None = None, Flat: str | None = None):
 		# Если задача новая, то сгенерировать ID.
 		if ID == None: ID = self.__GenerateID("task")
 		# Словарь описания.
@@ -169,6 +169,7 @@ class Scheduler:
 			"method": {
 				"profile": Profile,
 				"item-id": ItemID,
+				"flat": Flat,
 				"price": Price,
 				"delta": IsDelta
 			},
@@ -203,7 +204,7 @@ class Scheduler:
 		logging.info(f"Task with ID {ID} initialized. Trigger type: \"cron\".")
 		
 	# Создаёт задачу с синтаксисом даты.
-	def createDateTask(self, Task: any, Profile: str, ItemID: int, Price: int, IsDelta: bool, Date: tuple, Time: tuple, ID: str | None = None):
+	def createDateTask(self, Task: any, Profile: str, ItemID: int, Price: int, IsDelta: bool, Date: tuple, Time: tuple, ID: str | None = None, Flat: str | None = None):
 		# Если задача новая, то сгенерировать ID.
 		if ID == None: ID = self.__GenerateID("task")
 		# Конвертирование даты.
@@ -215,6 +216,7 @@ class Scheduler:
 			"method": {
 				"profile": Profile,
 				"item-id": ItemID,
+				"flat": Flat,
 				"price": Price,
 				"delta": IsDelta
 			},
@@ -247,7 +249,7 @@ class Scheduler:
 		logging.info(f"Task with ID {ID} initialized. Trigger type: \"date\".")
 		
 	# Создаёт работу.
-	def createJob(self, Profile: str, ItemID: int, Price: int, IsDelta: bool, ExtraPrice: int, Hour: int):
+	def createJob(self, Profile: str, ItemID: int, Price: int, IsDelta: bool, ExtraPrice: int, Hour: int, Flat: str | None = None):
 		# ID.
 		ID = self.__GenerateID("job")
 		# Описание работы.
@@ -255,6 +257,7 @@ class Scheduler:
 			"id": int(ID),
 			"profile": Profile,
 			"item-id": ItemID,
+			"flat": Flat,
 			"price": Price,
 			"delta": IsDelta,
 			"extra-price": ExtraPrice,

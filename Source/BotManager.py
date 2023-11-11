@@ -57,7 +57,8 @@ class BotManager:
 					IsDelta = Bufer["method"]["delta"],
 					DayOfWeek = Bufer["trigger"]["day"],
 					Time = (Bufer["trigger"]["hour"], Bufer["trigger"]["minute"]),
-					ID = ID
+					ID = ID,
+					Flat = Bufer["method"]["flat"]
 				)
 				
 			# Если тип триггера задачи – date.
@@ -72,7 +73,8 @@ class BotManager:
 					IsDelta = Bufer["method"]["delta"],
 					Date = Bufer["trigger"]["day"],
 					Time = (Bufer["trigger"]["hour"], Bufer["trigger"]["minute"]),
-					ID = ID
+					ID = ID,
+					Flat = Bufer["method"]["flat"]
 				)
 				
 	# Возвращает список номеров профилей.
@@ -81,8 +83,8 @@ class BotManager:
 		Profiles = list()
 		
 		# Для каждого профиля записать номер.
-		for ProfileID in self.__UsersData.keys():
-			Profiles.append(self.__UsersData[ProfileID]["profile"])
+		for ProfileID in self.__UsersData["profiles"].keys():
+			Profiles.append(self.__UsersData["profiles"][ProfileID]["profile"])
 			
 		return Profiles
 			
@@ -106,12 +108,12 @@ class BotManager:
 		self.__UsersData = ReadJSON("Data/Avito.json")
 		
 		# Для каждого пользователя.
-		for User in self.__UsersData.keys():
+		for User in self.__UsersData["profiles"].keys():
 			# Инициализация буфера данных пользователя.
 			self.__AvitoUserBufer = {
-				"profile": self.__UsersData[User]["profile"],
-				"client-id": self.__UsersData[User]["client-id"],
-				"client-secret": self.__UsersData[User]["client-secret"]
+				"profile": self.__UsersData["profiles"][User]["profile"],
+				"client-id": self.__UsersData["profiles"][User]["client-id"],
+				"client-secret": self.__UsersData["profiles"][User]["client-secret"]
 			}
 			# Инициализация пользователя.
 			self.register(User)
@@ -134,7 +136,7 @@ class BotManager:
 			if Bufer["active"] == True:
 				
 				# Если пользователь существует.
-				if Tasks["tasks"][TaskID]["method"]["profile"] in self.__UsersData.keys():
+				if Tasks["tasks"][TaskID]["method"]["profile"] in self.__UsersData["profiles"].keys():
 					# Создать задачу.
 					self.__CreateTask(Bufer, TaskID)
 					
@@ -149,6 +151,20 @@ class BotManager:
 			else:
 				# Запись в лог сообщения: задача пропущена.
 				logging.info(f"Task with ID {TaskID} inactive. Skipped.")
+				
+	# Возвращает ID объявления по идентификатору.
+	def __ProcessFlatName(self, FlatName: str) -> str:
+		# Оригинальный идентификатор.
+		OriginName = None
+		
+		# Если для квартиры определён идентификатор.
+		if FlatName in self.__UsersData["flats"].keys():
+			# Запись названия.
+			OriginName = FlatName
+			# Присвоение номера профиля вместо идентификатора.
+			FlatName = self.__UsersData["flats"][FlatName]
+		
+		return OriginName, FlatName
 				
 	# Удаляет связанные с профилем работы.
 	def __RemoveConnectedJobs(self, ProfileID: str):
@@ -256,11 +272,15 @@ class BotManager:
 		
 	# Возвращает словарь пользователей Авито.
 	def getAvitoUsers(self) -> dict:
-		return self.__UsersData
+		return self.__UsersData["profiles"]
 
 	# Возвращает тип ожидаемого сообщения.
 	def getExpectedType(self) -> ExpectedMessageTypes:
 		return self.__ExpectedType
+	
+	# Возвращает словарь квартир.
+	def getFlats(self) -> dict:
+		return self.__UsersData["flats"]
 		
 	# Регистрирует нового пользователя Авито.
 	def register(self, UserID: str | None = None) -> bool:
@@ -280,7 +300,7 @@ class BotManager:
 					# Помещение пользователя в словарь.
 					self.__Users[str(self.__AvitoUserBufer["profile"])] = User
 					# Запись данных пользователя.
-					self.__UsersData[str(self.__AvitoUserBufer["profile"])] = self.__AvitoUserBufer
+					self.__UsersData["profiles"][str(self.__AvitoUserBufer["profile"])] = self.__AvitoUserBufer
 					# Сохранение данных пользователей.
 					WriteJSON("Data/Avito.json", self.__UsersData)
 					# Переключение состояния успешности.
@@ -338,6 +358,8 @@ class BotManager:
 		IsSuccess = False
 		# Состояние: используется дельта.
 		IsDelta = False
+		# Обработка идентификатора квартиры.
+		ItemID = self.__ProcessFlatName(ItemID)
 		
 		# Если присутствует знак, то включить режим изменения по дельте.
 		if '+' in Price or '-' in Price:
@@ -385,6 +407,8 @@ class BotManager:
 		IsSuccess = False
 		# Состояние: используется дельта.
 		IsDelta = False
+		# Обработка идентификатора квартиры.
+		ItemID = self.__ProcessFlatName(ItemID)
 		
 		# Если присутствует знак, то включить режим изменения по дельте.
 		if '+' in Price or '-' in Price:
@@ -414,6 +438,24 @@ class BotManager:
 		
 		return IsSuccess
 
+	# Удаляет идентификатор квартиры.
+	def cmd_delflat(self, FlatName: str) -> bool:
+		# Состояние: успешно ли создание.
+		IsSuccess = True
+		
+		# Если указанный идентификатор не занят.
+		if FlatName in self.__UsersData["flats"].keys():
+			# Удаление записи.
+			del self.__UsersData["flats"][FlatName]
+			# Сохранение файла.
+			WriteJSON("Data/Avito.json", self.__UsersData)
+		
+		else:
+			# Переключение состояния.
+			IsSuccess = False
+			
+		return IsSuccess
+
 	# Удаляет работу.
 	def cmd_deljob(self, JobID: str) -> bool:
 		return self.__Planner.removeJob(int(JobID))
@@ -422,12 +464,32 @@ class BotManager:
 	def cmd_deltask(self, TaskID: str) -> bool:
 		return self.__Planner.removeTask(TaskID)
 	
+	# Создаёт квартиру.
+	def cmd_newflat(self, FlatID: str, FlatName: str) -> bool:
+		# Состояние: успешно ли создание.
+		IsSuccess = True
+		
+		# Если указанный идентификатор не занят.
+		if FlatName not in self.__UsersData["flats"].keys():
+			# Запись нового идентификатора объявления.
+			self.__UsersData["flats"][FlatName] = int(FlatID)
+			# Сохранение файла.
+			WriteJSON("Data/Avito.json", self.__UsersData)
+			
+		else:
+			# Переключение состояния.
+			IsSuccess = False
+			
+		return IsSuccess
+	
 	# Создаёт работу.
 	def cmd_newjob(self, Profile: str, ItemID: str, Price: str, ExtraPrice: str, Hour: str) -> bool:
 		# Состояние: успешна ли регистрация.
 		IsSuccess = True
 		# Состояние: используется дельта.
 		IsDelta = False
+		# Обработка идентификатора квартиры.
+		OriginName, ItemID = self.__ProcessFlatName(ItemID)
 		
 		# Если присутствует знак, то включить режим изменения по дельте.
 		if '+' in Price or '-' in Price:
@@ -435,9 +497,11 @@ class BotManager:
 		
 		try:
 			# Создание работы.
-			self.__Planner.createJob(Profile, int(ItemID), int(Price), IsDelta, int(ExtraPrice), int(Hour))
+			self.__Planner.createJob(Profile, int(ItemID), int(Price), IsDelta, int(ExtraPrice), int(Hour), Flat = OriginName)
 			
-		except Exception:
+		except Exception as ExceptionData:
+			# Запись в лог ошибки:
+			logging.error("Unable to create job. Description: \"" + str(ExceptionData) + "\".")
 			# Переключение состояния.
 			IsSuccess = False
 			
@@ -449,6 +513,8 @@ class BotManager:
 		IsSuccess = True
 		# Состояние: включён ли режим дельта-цены.
 		IsDelta = False
+		# Обработка идентификатора квартиры.
+		OriginName, ItemID = self.__ProcessFlatName(ItemID)
 		# Тип задачи.
 		Type = "cron"
 		
@@ -473,6 +539,7 @@ class BotManager:
 			"method": {
 				"profile": Profile,
 				"item-id": ItemID,
+				"flat": OriginName,
 				"price": int(Price),
 				"delta": IsDelta
 			},
@@ -495,6 +562,8 @@ class BotManager:
 		IsSuccess = False
 		# Состояние: используется дельта.
 		IsDelta = False
+		# Обработка идентификатора квартиры.
+		ItemID = self.__ProcessFlatName(ItemID)
 		
 		# Если присутствует знак, то включить режим изменения по дельте.
 		if '+' in Price or '-' in Price:
@@ -530,9 +599,9 @@ class BotManager:
 		IsSuccess = False
 		
 		# Если такой пользователь добавлен.
-		if OldID in self.__UsersData.keys():
+		if OldID in self.__UsersData["profiles"].keys():
 			# Переименовать его ключ.
-			self.__UsersData = RenameDictionaryKey(self.__UsersData.copy(), OldID, NewID)
+			self.__UsersData["profiles"] = RenameDictionaryKey(self.__UsersData["profiles"], OldID, NewID)
 			self.__Users = RenameDictionaryKey(self.__Users.copy(), OldID, NewID)
 			# Переключить состояние.
 			IsSuccess = True
@@ -549,9 +618,9 @@ class BotManager:
 		IsSuccess = False
 		
 		# Если такой пользователь существует.
-		if UserID in self.__UsersData.keys():
+		if UserID in self.__UsersData["profiles"].keys():
 			# Удаление данных пользователя.
-			del self.__UsersData[UserID]
+			del self.__UsersData["profiles"][UserID]
 			del self.__Users[UserID]
 			# Переключить состояние.
 			IsSuccess = True

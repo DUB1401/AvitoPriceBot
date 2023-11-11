@@ -13,6 +13,8 @@ class QueueTypes(enum.Enum):
 	Profiles = "profiles"
 	# Задачи.
 	Tasks = "tasks"
+	# Квартиры.
+	Flats = "flats"
 	# Работы.
 	Jobs = "jobs"
 
@@ -32,11 +34,27 @@ class MessagesTemplates:
 			if Job["price"] > 0 and Job["delta"] == True: Price = "+" + Price
 			# Сгенерировать описание пользователя.
 			Bufer = "Идентификатор: " + str(Job["id"]) + "\n"
-			Bufer += "Номер профиля: " + str(Job["profile"]) + "\n"
+			Bufer += "Номер профиля: _*" + str(Job["profile"]) + "*_\n"
+			if Job["flat"]!= None: Bufer += "Идентификатор объявления: _*" + EscapeCharacters(Job["flat"]) + "*_\n"
 			Bufer += "ID объявления: " + str(Job["item-id"]) + "\n"
 			Bufer += "Стоимость: " + EscapeCharacters(Price) + "\n"
 			Bufer += "Доплата за гостя: " + str(Job["extra-price"]) + "\n"
 			Bufer += "Время проверки: _" + EscapeCharacters(str(Job["hour"]).rjust(2, '0') + ":00") + "_\n"
+			# Сохранение буфера.
+			Descriptions.append(Bufer)
+		
+		return Descriptions
+	
+	# Строит список описаний квартир.
+	def __BuildFlatsDescriptions(self, Flats: dict) -> list[str]:
+		# Описания работ.
+		Descriptions = list()
+		
+		# Для каждой работы.
+		for FlatName in Flats.keys():
+			# Сгенерировать описание пользователя.
+			Bufer = "Имя: _*" + EscapeCharacters(FlatName) + "*_\n"
+			Bufer += "Идентификатор: " + str(Flats[FlatName]) + "\n"
 			# Сохранение буфера.
 			Descriptions.append(Bufer)
 		
@@ -50,8 +68,8 @@ class MessagesTemplates:
 		# Для каждого профиля.
 		for UserID in UsersData.keys():
 			# Сгенерировать описание пользователя.
-			Bufer = "Идентификатор: " + EscapeCharacters(UserID) + "\n"
-			Bufer += "Номер профиля: " + str(UsersData[UserID]["profile"]) + "\n"
+			Bufer = "Идентификатор: _*" + EscapeCharacters(UserID) + "*_\n"
+			Bufer += "Номер профиля: _*" + str(UsersData[UserID]["profile"]) + "*_\n"
 			Bufer += "ID клиента: " + EscapeCharacters(UsersData[UserID]["client-id"]) + "\n"
 			Bufer += "Секретный ключ клиента: " + EscapeCharacters(UsersData[UserID]["client-secret"]) + "\n"
 			# Сохранение буфера.
@@ -77,6 +95,7 @@ class MessagesTemplates:
 			# Буфер описания.
 			Bufer = "Идентификатор: " + EscapeCharacters(TaskID) + "\n"
 			Bufer += "Профиль Авито: " + Tasks[TaskID]["method"]["profile"] + "\n"
+			if Tasks[TaskID]["method"]["item-name"]!= None: Bufer += "Идентификатор объявления: _*" + Tasks[TaskID]["method"]["item-name"] + "*_\n"
 			Bufer += "ID объявления: " + str(Tasks[TaskID]["method"]["item-id"]) + "\n"
 			Bufer += "Стоимость: " + EscapeCharacters(Price) + "\n"
 		
@@ -101,6 +120,10 @@ class MessagesTemplates:
 		
 		# Проверка типа данных.
 		match Type:
+			
+			# Составление списка описаний квартир.
+			case QueueTypes.Flats:
+				Descriptions = self.__BuildFlatsDescriptions(Data) 
 			
 			# Составление списка описаний работ.
 			case QueueTypes.Jobs:
@@ -167,6 +190,23 @@ class MessagesTemplates:
 		self.__Bot = Bot
 		# Количество описаний в сообщении.
 		self.__PagesFactor = 10
+		
+	# Отправляет сообщения: список квартир.
+	def Flats(self, Flats: dict, ChatID: int):
+		# Очередь сообщений описаний.
+		Messages = self.__MakeQueue(
+			Type = QueueTypes.Flats,
+			Data = Flats,
+			Header = "🏠 Список квартир",
+			ZeroItemsMessage = "*🏠 Список квартир*\n\nВы не добавили ни одной квартиры\."
+		)
+					
+		# Отправка каждого сообщения.
+		for Message in Messages:
+			# Отправка сообщения: необходимо авторизоваться.
+			self.__Bot.send_message(ChatID, Message, parse_mode = "MarkdownV2")
+			# Выжидание паузы.
+			sleep(0.1)
 		
 	# Отправляет сообщения: список запланированных задач.
 	def Jobs(self, Jobs: list, ChatID: int):

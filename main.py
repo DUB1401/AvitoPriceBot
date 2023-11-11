@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from curses.ascii import ESC
 from dublib.Methods import Cls, CheckPythonMinimalVersion, MakeRootDirectories, ReadJSON
 from Source.MessagesTemplates import MessagesTemplates
 from Source.DateParser import DateParser
@@ -74,8 +75,10 @@ if type(Settings["token"]) != str or Settings["token"].strip() == "":
 COMMANDS = [
 	"calendar",
 	"day",
+	"delflat",
 	"deljob",
 	"deltask",
+	"newflat",
 	"newjob",
 	"newtask",
 	"price",
@@ -96,6 +99,19 @@ Messages = MessagesTemplates(Bot)
 # >>>>> ОБРАБОТКА ЗАПРОСОВ <<<<< #
 #==========================================================================================#
 
+# Обработка команды: flats.
+@Bot.message_handler(commands=["flats"])
+def ProcessCommandStart(Message: types.Message):
+
+	# Проверка авторизации пользователя.
+	if BotData.login(Message.from_user.id) == True:
+		# Отправка сообщения: список запланированных задач.
+		Messages.Flats(BotData.getFlats(), Message.chat.id)
+	
+	else:
+		# Отправка сообщения: необходимо авторизоваться.
+		Messages.UserAuthRequired(Message.chat.id)
+
 # Обработка команды: help.
 @Bot.message_handler(commands=["help"])
 def ProcessCommandStart(Message: types.Message):
@@ -104,8 +120,10 @@ def ProcessCommandStart(Message: types.Message):
 	# Добавление описания команд.
 	HelpMessage += "*calendar* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[EXTRA\_PRICE\] \[DAYS\]\n" + "Описание: _Изменяет свойства ренты для выбранных дней недели текущего месяца\._\n\n" 
 	HelpMessage += "*dayprice* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[EXTRA\_PRICE\] \[DATE\]\n" + "Описание: _Изменяет свойства ренты для определённой даты\._\n\n" 
+	HelpMessage += "*delflat* \[FLAT\_NAME\]\n" + "Описание: _Удаляет идентификатор квартиры\._\n\n" 
 	HelpMessage += "*deljob* \[JOB\_ID\]\n" + "Описание: _Удаляет работу\._\n\n" 
 	HelpMessage += "*deltask* \[TASK\_ID\]\n" + "Описание: _Удаляет задачу\._\n\n" 
+	HelpMessage += "*newflat* \[ITEM\_ID\] \[FLAT\_NAME\]\n" + "Описание: _Задаёт идентификатор для квартиры\._\n\n" 
 	HelpMessage += "*newjob* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[EXTRA\_PRICE\]\ \[HOUR\]\ \n" + "Описание: _Создаёт работу, модифицирующую свойства ренты в случае отстутвия брони до указанного времени\._\n\n" 
 	HelpMessage += "*newtask* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[DAY\]\ \[HOUR\]\ \[MINUTE\]\n" + "Описание: _Создаёт задачу с отложенным или регулярным выполнением, изменяющую базовую стоимость ренты\._\n\n" 
 	HelpMessage += "*price* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\]\n" + "Описание: _Моментально задаёт новую базовую стоимость\._\n\n"
@@ -381,6 +399,30 @@ def ProcessTextMessage(Message: types.Message):
 										disable_web_page_preview = True
 									)
 									
+							# Обработка команды: delflat.
+							case "delflat":
+								# Попытка выполнить команду.
+								Result = BotData.cmd_delflat(CommandData[1])
+								
+								# Если выполнение успешно.
+								if Result == True:
+									# Отправка сообщения: идентификатор удалён.
+									Bot.send_message(
+										Message.chat.id,
+										f"Идентификатор объявления удалён.",
+										parse_mode = None,
+										disable_web_page_preview = True
+									)
+									
+								else:
+									# Отправка сообщения: не удалось удалить идентификатор.
+									Bot.send_message(
+										Message.chat.id,
+										f"Не удалось найти указанный идентификатор объявления.",
+										parse_mode = None,
+										disable_web_page_preview = True
+									)
+									
 							# Обработка команды: deljob.
 							case "deljob":
 								# Попытка выполнить команду.
@@ -425,6 +467,32 @@ def ProcessTextMessage(Message: types.Message):
 									Bot.send_message(
 										Message.chat.id,
 										f"Не удалось удалить задачу. Проверьте корректность указанного идентификатора.",
+										parse_mode = None,
+										disable_web_page_preview = True
+									)
+									
+							# Обработка команды: newflat.
+							case "newflat":
+								# Попытка выполнить команду.
+								Result = BotData.cmd_newflat(CommandData[1], CommandData[2])
+								
+								# Если выполнение успешно.
+								if Result == True:
+									# Экранирование идентификатора.
+									NewID = EscapeCharacters(CommandData[2])
+									# Отправка сообщения: идентификатор изменён.
+									Bot.send_message(
+										Message.chat.id,
+										f"Для объявления *{CommandData[1]}* задан новый идентификатор *{NewID}*\. Теперь вы можете использовать его в командах\.",
+										parse_mode = "MarkdownV2",
+										disable_web_page_preview = True
+									)
+									
+								else:
+									# Отправка сообщения: не удалось изменить идентификатор.
+									Bot.send_message(
+										Message.chat.id,
+										f"Не удалось выполнить переименование. Возможно, объявление с таким идентификатором уже существует.",
 										parse_mode = None,
 										disable_web_page_preview = True
 									)
