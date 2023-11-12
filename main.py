@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-from curses.ascii import ESC
 from dublib.Methods import Cls, CheckPythonMinimalVersion, MakeRootDirectories, ReadJSON
 from Source.MessagesTemplates import MessagesTemplates
 from Source.DateParser import DateParser
@@ -124,7 +123,7 @@ def ProcessCommandStart(Message: types.Message):
 	HelpMessage += "*deljob* \[JOB\_ID\]\n" + "Описание: _Удаляет работу\._\n\n" 
 	HelpMessage += "*deltask* \[TASK\_ID\]\n" + "Описание: _Удаляет задачу\._\n\n" 
 	HelpMessage += "*newflat* \[ITEM\_ID\] \[FLAT\_NAME\]\n" + "Описание: _Задаёт идентификатор для квартиры\._\n\n" 
-	HelpMessage += "*newjob* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[EXTRA\_PRICE\]\ \[HOUR\]\ \n" + "Описание: _Создаёт работу, модифицирующую свойства ренты в случае отстутвия брони до указанного времени\._\n\n" 
+	HelpMessage += "*newjob* \[ACCOUNT\] \[ITEMS\_ID\] \[PRICE\] \[EXTRA\_PRICE\]\ \[HOUR\]\ \n" + "Описание: _Создаёт работу, модифицирующую свойства ренты в случае отстутвия брони до указанного времени\._\n\n" 
 	HelpMessage += "*newtask* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\] \[DAY\]\ \[HOUR\]\ \[MINUTE\]\n" + "Описание: _Создаёт задачу с отложенным или регулярным выполнением, изменяющую базовую стоимость ренты\._\n\n" 
 	HelpMessage += "*price* \[ACCOUNT\] \[ITEM\_ID\] \[PRICE\]\n" + "Описание: _Моментально задаёт новую базовую стоимость\._\n\n"
 	HelpMessage += "*rename* \[OLD\_ACCOUNT\] \[NEW\_ACCOUNT\]\n" + "Описание: _Изменяет идентификатор профиля\._\n\n" 
@@ -501,24 +500,24 @@ def ProcessTextMessage(Message: types.Message):
 							case "newjob":
 								# Попытка выполнить команду.
 								Result = BotData.cmd_newjob(CommandData[1], CommandData[2], CommandData[3], CommandData[4], CommandData[5])
+								# Количество квартир.
+								FlatsCount = len(CommandData[2].split(','))
 								
 								# Если выполнение успешно.
-								if Result == True:
+								if Result == 0:
 									# Отправка сообщения: идентификатор успешно изменён.
 									Bot.send_message(
 										Message.chat.id,
-										f"Работа создана.",
-										parse_mode = None,
-										disable_web_page_preview = True
+										f"Работ создано: *" + str(FlatsCount - Result) + "*\.",
+										parse_mode = "MarkdownV2",
 									)
 									
 								else:
 									# Отправка сообщения: не удалось изменить идентификатор.
 									Bot.send_message(
 										Message.chat.id,
-										f"Не удалось создать работу.",
-										parse_mode = None,
-										disable_web_page_preview = True
+										f"Не удалось следующее количество работ: *{Result}*\.",
+										parse_mode = "MarkdownV2",
 									)
 							
 							# Обработка команды: newtask.
@@ -617,7 +616,7 @@ def ProcessTextMessage(Message: types.Message):
 										disable_web_page_preview = True
 									)
 					
-					except FileExistsError as ExceptionData:
+					except Exception as ExceptionData:
 						# Запись в лог ошибки: неверный синтаксис команды.
 						logging.error("Uncorrect command: \"" + " ".join(CommandData) + "\". Description: \"" + str(ExceptionData).rstrip('.') + "\".")
 						# Отправка сообщения: неверный синтаксис.

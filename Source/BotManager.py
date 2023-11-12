@@ -483,29 +483,56 @@ class BotManager:
 		return IsSuccess
 	
 	# Создаёт работу.
-	def cmd_newjob(self, Profile: str, ItemID: str, Price: str, ExtraPrice: str, Hour: str) -> bool:
-		# Состояние: успешна ли регистрация.
-		IsSuccess = True
+	def cmd_newjob(self, Profile: str, ItemID: str, Price: str, ExtraPrice: str, Hour: str) -> int:
+		# Количество ошибок.
+		ErrorsCount = 0
 		# Состояние: используется дельта.
 		IsDelta = False
-		# Обработка идентификатора квартиры.
-		OriginName, ItemID = self.__ProcessFlatName(ItemID)
+		# Список объявлений.
+		Items = list()
+		
+		# Если объявления указаны через запятую.
+		if ',' in ItemID:
+			
+			# Для каждого объявления
+			for ItemBufer in ItemID.split(','):
+				# Обработка идентификатора квартиры.
+				OriginName, ItemIntID = self.__ProcessFlatName(ItemBufer)
+				# Буфер описания.
+				Bufer = {
+					"item-id": int(ItemIntID),
+					"flat": OriginName
+				}
+				# Сохранение квартиры.
+				Items.append(Bufer)
+			
+		else:
+			# Обработка идентификатора квартиры.
+			OriginName, ItemID = self.__ProcessFlatName(ItemID)
+			# Сохранение профиля.
+			Items.append({
+				"item-id": int(ItemID),
+				"flat": OriginName
+			})
 		
 		# Если присутствует знак, то включить режим изменения по дельте.
 		if '+' in Price or '-' in Price:
 			IsDelta = True
 		
-		try:
-			# Создание работы.
-			self.__Planner.createJob(Profile, int(ItemID), int(Price), IsDelta, int(ExtraPrice), int(Hour), Flat = OriginName)
+		# Для всех профилей.
+		for CurrentItem in Items:
+		
+			try:
+				# Создание работы.
+				self.__Planner.createJob(Profile, CurrentItem["item-id"], int(Price), IsDelta, int(ExtraPrice), int(Hour), Flat = CurrentItem["flat"])
 			
-		except Exception as ExceptionData:
-			# Запись в лог ошибки:
-			logging.error("Unable to create job. Description: \"" + str(ExceptionData) + "\".")
-			# Переключение состояния.
-			IsSuccess = False
+			except Exception as ExceptionData:
+				# Запись в лог ошибки:
+				logging.error("Unable to create job. Description: \"" + str(ExceptionData) + "\".")
+				# Инкремент ошибок.
+				ErrorsCount += 1
 			
-		return IsSuccess
+		return ErrorsCount
 	
 	# Создаёт задачу с синтаксисом cron.
 	def cmd_newtask(self, Profile: str, ItemID: str, Price: str, Day: str, Time: tuple) -> bool:
