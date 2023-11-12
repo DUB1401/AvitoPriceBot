@@ -125,7 +125,8 @@ class Scheduler:
 					Date = Date,
 					Price = Job["price"],
 					IsDelta = Job["delta"],
-					ExtraPrice = Job["extra-price"]
+					ExtraPrice = Job["extra-price"],
+					Flat = Job["flat"]
 				)
 				# Выжидание интервала.
 				sleep(self.__Settings["delay"])
@@ -223,8 +224,8 @@ class Scheduler:
 			"trigger": {
 				"type": "date",
 				"day": str(Date[0]) + "." + str(Date[1]) + "." + str(Date[2]),
-				"hour": Time[0],
-				"minute": Time[1],
+				"hour": int(Time[0]),
+				"minute": int(Time[1]),
 				"repeat": True
 			}
 		}
@@ -235,7 +236,7 @@ class Scheduler:
 		self.__Planner.add_job(
 			func = Task,
 			trigger = "date",
-			args = (Profile, ItemID, Price, IsDelta, ID),
+			args = (Profile, ItemID, Price, IsDelta, ID, Description["method"]["flat"]),
 			id = ID,
 			run_date = datetime(Date[0], Date[1], Date[2], int(Time[0]), int(Time[1]))
 		)
@@ -268,6 +269,8 @@ class Scheduler:
 		self.__Tasks["jobs"].append(Description)
 		# Сохранение файла.
 		self.__Save()
+		# Немедленный запуск.
+		self.__Worker()
 
 	# Возвращает список работ.
 	def getJobs(self) -> list[dict]:

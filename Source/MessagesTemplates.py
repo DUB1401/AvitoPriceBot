@@ -95,7 +95,7 @@ class MessagesTemplates:
 			# Буфер описания.
 			Bufer = "Идентификатор: " + EscapeCharacters(TaskID) + "\n"
 			Bufer += "Профиль Авито: " + Tasks[TaskID]["method"]["profile"] + "\n"
-			if Tasks[TaskID]["method"]["item-name"]!= None: Bufer += "Идентификатор объявления: _*" + Tasks[TaskID]["method"]["item-name"] + "*_\n"
+			if Tasks[TaskID]["method"]["flat"]!= None: Bufer += "Идентификатор объявления: _*" + Tasks[TaskID]["method"]["flat"] + "*_\n"
 			Bufer += "ID объявления: " + str(Tasks[TaskID]["method"]["item-id"]) + "\n"
 			Bufer += "Стоимость: " + EscapeCharacters(Price) + "\n"
 		

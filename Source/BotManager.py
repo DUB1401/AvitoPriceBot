@@ -6,6 +6,7 @@ from Source.Avito import AvitoUser
 from time import sleep
 
 import logging
+import telebot
 import enum
 
 # Типы ожидаемых сообщений.
@@ -197,14 +198,14 @@ class BotManager:
 				self.cmd_deltask(TaskID)
 
 	# Выполняет задачу один раз.
-	def __StartOnceTask(self, Profile: str, ItemID: str, Price: int, IsDelta: bool, ID: str):
+	def __StartOnceTask(self, Profile: str, ItemID: str, Price: int, IsDelta: bool, ID: str, Flat: str | None = None):
 		# Запуск задачи.
-		self.__Users[Profile].setPrice(ItemID, Price) if IsDelta == False else self.__Users[Profile].setDeltaPrice(ItemID, Price)
+		self.__Users[Profile].setPrice(ItemID, Price, Flat) if IsDelta == False else self.__Users[Profile].setDeltaPrice(ItemID, Price, Flat)
 		# Удаление задачи.
 		self.__Planner.removeTask(ID, True)
 
 	# Конструктор.
-	def __init__(self, Settings: dict):
+	def __init__(self, Settings: dict, Bot: telebot.TeleBot):
 		
 		#---> Генерация динамических свойств.
 		#==========================================================================================#
@@ -232,6 +233,8 @@ class BotManager:
 			"сб": "SAT",	
 			"вс": "SUN",	
 		}
+		# Экземпляр бота.
+		self.__Bot = Bot
 		
 		# Загрузка разрешённых пользователей.
 		self.__LoadAllowedUsers()
@@ -287,7 +290,7 @@ class BotManager:
 		# Состояние: успешна ли регистрация.
 		IsSuccess = False
 		# Попытка получения токена доступа.
-		User = AvitoUser(self.__Settings, self.__AvitoUserBufer["profile"], self.__AvitoUserBufer["client-id"], self.__AvitoUserBufer["client-secret"])
+		User = AvitoUser(self.__Settings, self.__AvitoUserBufer["profile"], self.__AvitoUserBufer["client-id"], self.__AvitoUserBufer["client-secret"], self.__Bot)
 		
 		# Если токен получен.
 		if User.getAccessToken() != None:
@@ -359,7 +362,7 @@ class BotManager:
 		# Состояние: используется дельта.
 		IsDelta = False
 		# Обработка идентификатора квартиры.
-		ItemID = self.__ProcessFlatName(ItemID)
+		Origin, ItemID = self.__ProcessFlatName(ItemID)
 		
 		# Если присутствует знак, то включить режим изменения по дельте.
 		if '+' in Price or '-' in Price:
@@ -390,7 +393,7 @@ class BotManager:
 			# Для каждой даты.
 			for Date in Dates:
 				# Изменение свойств для даты.
-				IsSuccess = self.__Users[UserID].setCalendarDayProperties(ItemID, Date, Price, IsDelta, PerGuestExtraPrice = int(PerGuestExtraPrice))
+				IsSuccess = self.__Users[UserID].setCalendarDayProperties(ItemID, Date, Price, IsDelta, PerGuestExtraPrice = int(PerGuestExtraPrice), Flat = Origin, Deferred = False)
 				# Выжидание интервала.
 				sleep(0.1)
 				
@@ -408,7 +411,7 @@ class BotManager:
 		# Состояние: используется дельта.
 		IsDelta = False
 		# Обработка идентификатора квартиры.
-		ItemID = self.__ProcessFlatName(ItemID)
+		Origin, ItemID = self.__ProcessFlatName(ItemID)
 		
 		# Если присутствует знак, то включить режим изменения по дельте.
 		if '+' in Price or '-' in Price:
@@ -434,7 +437,7 @@ class BotManager:
 			
 		else:
 			# Изменение свойств для даты.
-			IsSuccess = self.__Users[UserID].setCalendarDayProperties(ItemID, Date, Price, IsDelta, PerGuestExtraPrice = int(PerGuestExtraPrice))
+			IsSuccess = self.__Users[UserID].setCalendarDayProperties(ItemID, Date, Price, IsDelta, PerGuestExtraPrice = int(PerGuestExtraPrice), Flat = Origin, Deferred = False)
 		
 		return IsSuccess
 
@@ -590,7 +593,7 @@ class BotManager:
 		# Состояние: используется дельта.
 		IsDelta = False
 		# Обработка идентификатора квартиры.
-		ItemID = self.__ProcessFlatName(ItemID)
+		Origin, ItemID = self.__ProcessFlatName(ItemID)
 		
 		# Если присутствует знак, то включить режим изменения по дельте.
 		if '+' in Price or '-' in Price:
@@ -616,7 +619,7 @@ class BotManager:
 			
 		else:
 			# Изменение стоимости аренды.
-			IsSuccess = self.__Users[UserID].setPrice(ItemID, Price) if IsDelta == False else self.__Users[UserID].setDeltaPrice(ItemID, Price)
+			IsSuccess = self.__Users[UserID].setPrice(ItemID, Price, Deferred = False) if IsDelta == False else self.__Users[UserID].setDeltaPrice(ItemID, Price, Deferred = False)
 		
 		return IsSuccess
 
@@ -637,6 +640,41 @@ class BotManager:
 			# Запись в лог сообщения: пользователь удалён.
 			logging.info(f"Profile \"{OldID}\" renamed to \"{NewID}\".")
 			
+		return IsSuccess
+	
+	# Задаёт группу или канал для отчётов об отложенных работах.
+	def cmd_report(self, Bot: telebot.TeleBot, ChatID: str) -> bool:
+		# Состояние: успешна ли регистрация.
+		IsSuccess = True
+		
+		# Если чат не сбрасывается.
+		if ChatID != "0":
+		
+			try:
+				# Отправка сообщения: не удалось добавить номер профиля.
+				Bot.send_message(
+					ChatID,
+					"📢 *Отчёты*\n\nТеперь [AvitoPriceBot](https://github.com/DUB1401/AvitoPriceBot) будет присылать сюда отчёты о выполненных отложенных задачах\.",
+					parse_mode = "MarkdownV2",
+					disable_web_page_preview = True
+				)
+				# Запись ID чата.
+				self.__Settings["report-target"] = int(ChatID)
+				# Сохранение настроек.
+				WriteJSON("Settings.json", self.__Settings)
+		
+			except Exception as ExceptionData:
+				# Запись в лог ошибки: не удалось задать цель для отправки отчётов.
+				logging.error(f"Unable to set reports chat ID: {ChatID}. Description: {ExceptionData}.")
+				# Переключение состояния.
+				IsSuccess = False
+				
+		else:
+			# Обнуление ID чата.
+			self.__Settings["report-target"] = None
+			# Сохранение настроек.
+			WriteJSON("Settings.json", self.__Settings)
+		
 		return IsSuccess
 	
 	# Удаляет пользователя.

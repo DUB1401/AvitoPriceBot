@@ -3,6 +3,7 @@
 	"bot-password": "",
 	"timezone": "MSK",
 	"bot-password": "1234",
+	"report-target": null,
 	"timezone": "Europe/Moscow",
 	"use-supervisor": true,
 	"recycling-id": true,

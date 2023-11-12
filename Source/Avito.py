@@ -1,9 +1,11 @@
+from Source.Functions import EscapeCharacters
 from Source.DateParser import DateParser
 from threading import Thread
 from time import sleep
 
 import requests
 import logging
+import telebot
 import json
 
 # Менеджер аккаунта Авито.
@@ -101,7 +103,7 @@ class AvitoUser:
 				self.__Updater.start()
 		
 	# Конструктор.
-	def __init__(self, Settings: dict, Profile: int, ClientID: str, ClientSecret: str):
+	def __init__(self, Settings: dict, Profile: int, ClientID: str, ClientSecret: str, Bot: telebot.TeleBot):
 		
 		#---> Генерация динамических свойств.
 		#==========================================================================================#
@@ -114,13 +116,15 @@ class AvitoUser:
 		# Секретный ключ клиента.
 		self.__ClientSecret = ClientSecret
 		# Глобальные настройки.
-		self.__Settings = Settings.copy()
+		self.__Settings = Settings
 		#  Текущий токен.
 		self.__AccessToken = None
 		# Поток-надзиратель.
 		self.__Supervisor = Thread(target = self.__SupervisorThread, name = f"Profile {Profile} updater thred.")
 		# Поток обновления токена.
 		self.__Updater = Thread(target = self.__UpdaterThread, name = f"Profile {Profile} supervisor thred.")
+		# Экземпляр бота.
+		self.__Bot = Bot
 		
 		# Получение токена доступа.
 		self.__RefreshAccessToken()
@@ -263,7 +267,7 @@ class AvitoUser:
 		return Price
 	
 	# Задаёт свойства для конкретного дня.
-	def setCalendarDayProperties(self, ItemID: str, Date: DateParser, Price: int, IsDelta: bool, Duration: int = 1, ExtraPrice: int = 0) -> bool:
+	def setCalendarDayProperties(self, ItemID: str, Date: DateParser, Price: int, IsDelta: bool, Duration: int = 1, ExtraPrice: int = 0, Flat: str | None = None, Deferred: bool = True) -> bool:
 		# Заголовки запроса.
 		Headers = {
 			"authorization": self.getAccessToken()
@@ -272,6 +276,10 @@ class AvitoUser:
 		IsSuccess = True
 		# Конвертирование даты.
 		StringDate = Date.date("-", True, True)
+		# Если идентификатор квартиры не задан.
+		if Flat == None: Flat = ItemID
+		# Экранирование.
+		Flat = EscapeCharacters(str(Flat))
 		# Опции запроса.
 		Options = {
 			"prices": [
@@ -304,11 +312,27 @@ class AvitoUser:
 		else:
 			# Запись в лог сообщения: свойства даты изменены.
 			logging.error(f"Profile: {self.__ProfileID}. Properties for date \"{Date}\" changed.")
+		
+		# Если успешно.
+		if IsSuccess == True and self.__Settings["report-target"] != None and Deferred == True:
+			# Глагол изменения.
+			Verb = "изменена"
+			# Модификация глагола.
+			if IsDelta == True and Price > 0: Verb = "повышена"
+			if IsDelta == True and Price < 0: Verb = "снижена"
+			# Сообщение о доплате за гостя.
+			ExtraMessage = f" Установлена доплата за гостя: {ExtraPrice}" if ExtraPrice > 0 else ""
+			# Отправка сообщения: свойства дня изменены.
+			self.__Bot.send_message(
+				chat_id = self.__Settings["report-target"],
+				text = f"📢 *Отчёты*\n\nДля объявления *{Flat}* в дату _" + EscapeCharacters(Date.date()) + f"_ заданы новые свойства\. Стоимость {Verb} на " + str(Price).lstrip('-') + f" RUB\." + ExtraMessage,
+				parse_mode = "MarkdownV2"
+			)
 			
 		return IsSuccess
 	
 	# Задаёт стоимость объявлению с указанным ID.
-	def setPrice(self, ItemID: str, Price: int | str) -> bool:
+	def setPrice(self, ItemID: str, Price: int | str, Flat: str | None = None, Deferred: bool = True) -> bool:
 		# Заголовки запроса.
 		Headers = {
 			"authorization": self.getAccessToken()
@@ -317,6 +341,8 @@ class AvitoUser:
 		IsSuccess = True
 		# Отправка запроса на изменение стоимости.
 		Response = self.__Session.post(f"https://api.avito.ru/realty/v1/items/{ItemID}/base", headers = Headers, json = json.loads("{\"night_price\": " + str(Price) + "}"))
+		# Если идентификатор квартиры не задан.
+		if Flat == None: Flat = ItemID
 		
 		# Проверка ответа.
 		if Response.status_code != 200:
@@ -324,17 +350,28 @@ class AvitoUser:
 			IsSuccess = False
 			# Запись в лог ошибки: не удалось изменить стоимость.
 			logging.error(f"Profile: {self.__ProfileID}. Unable to change price. Response code: " + str(Response.status_code) + ".")
-		
+			
+		# Если успешно.
+		if IsSuccess == True and self.__Settings["report-target"] != None and Deferred == True:
+			# Отправка сообщения: стоимость изменена.
+			self.__Bot.send_message(
+				chat_id = self.__Settings["report-target"],
+				text = "📢 *Отчёты*\n\nСтоимость в объявлении *" + str(Flat) + "* изменена на " + str(Price) + " RUB\.",
+				parse_mode = "MarkdownV2"
+			)
+			
 		return IsSuccess
 	
 	# Увеличивает или уменьшает стоимость объявления с указанным ID.
-	def setDeltaPrice(self, ItemID: str, DeltaPrice: int | str) -> bool:
+	def setDeltaPrice(self, ItemID: str, DeltaPrice: int | str, Flat: str | None = None, Deferred: bool = True) -> bool:
 		# Состояние: успешен ли запрос.
 		IsSuccess = True
 		# Исходная стоимость.
 		Price = self.getPrice(ItemID)
 		# Вычисление новой стоимости.
 		Price += DeltaPrice
+		# Если идентификатор квартиры не задан.
+		if Flat == None: Flat = ItemID
 		
 		# Если цена меньше нуля.
 		if Price < 0:
@@ -344,5 +381,16 @@ class AvitoUser:
 		else:
 			# Изменение стоимости.
 			IsSuccess = self.setPrice(ItemID, Price)
+		
+		# Если успешно.
+		if IsSuccess == True and self.__Settings["report-target"] != None and Deferred == True:
+			# Глагол изменения.
+			Verb = "повышена" if int(DeltaPrice) > 0 else "снижена"
+			# Отправка сообщения: стоимость изменена.
+			self.__Bot.send_message(
+				chat_id = self.__Settings["report-target"],
+				text = f"📢 *Отчёты*\n\nСтоимость в объявлении *{Flat}* {Verb} на " + str(DeltaPrice).lstrip('-') + " RUB\.",
+				parse_mode = "MarkdownV2"
+			)
 		
 		return IsSuccess
