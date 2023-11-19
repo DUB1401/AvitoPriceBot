@@ -69,6 +69,7 @@ class AvitoUser:
 			else:
 				# Запись в лог сообщения: токен обновлён.
 				logging.info(f"Profile: {self.__ProfileID}. Token refreshed.")
+				
 		else:
 			# Запись в лог ошибки: не удалось обновить токен доступа.
 			logging.error(f"Profile: {self.__ProfileID}. Unable to refresh access token. Response code: " + str(Response.status_code) + ".")
@@ -81,7 +82,7 @@ class AvitoUser:
 		# Постоянно.
 		while True:
 			# Выжидание 23-ёх часов.
-			sleep(float(23 * 60))
+			sleep(1380)
 			# Обновление токен.
 			self.__RefreshAccessToken()
 			
@@ -91,7 +92,7 @@ class AvitoUser:
 		# Постоянно.
 		while True:
 			# Выжидание 5-ти минут.
-			sleep(float(5 * 60))
+			sleep(300)
 
 			# Если поток обновления токена остановлен.
 			if self.__Updater.is_alive() == False:
@@ -307,11 +308,12 @@ class AvitoUser:
 			# Конвертирование даты.
 			StringDate = Date.date()
 			# Запись в лог ошибки: не удалось изменить свойства.
-			logging.error(f"Profile: {self.__ProfileID}. Unable to change properties for date: \"{Date}\". Response code: " + str(Response.status_code) + ".")
+			logging.error(f"Profile: {self.__ProfileID}. Unable to change properties for date: \"{StringDate}\". Response code: " + str(Response.status_code) + ".")
+			print(Response.text)
 			
 		else:
 			# Запись в лог сообщения: свойства даты изменены.
-			logging.error(f"Profile: {self.__ProfileID}. Properties for date \"{Date}\" changed.")
+			logging.error(f"Profile: {self.__ProfileID}. Properties for date \"{StringDate}\" changed.")
 		
 		# Если успешно.
 		if IsSuccess == True and self.__Settings["report-target"] != None and Deferred == True:
@@ -325,7 +327,7 @@ class AvitoUser:
 			# Отправка сообщения: свойства дня изменены.
 			self.__Bot.send_message(
 				chat_id = self.__Settings["report-target"],
-				text = f"📢 *Отчёты*\n\nДля объявления *{Flat}* в дату _" + EscapeCharacters(Date.date()) + f"_ заданы новые свойства\. Стоимость {Verb} на " + str(Price).lstrip('-') + f" RUB\." + ExtraMessage,
+				text = f"📢 *Отчёты*\n\nДля объявления *{Flat}* в дату _" + EscapeCharacters(StringDate) + f"_ заданы новые свойства\. Стоимость {Verb} на " + str(Price).lstrip('-') + f" RUB\." + ExtraMessage,
 				parse_mode = "MarkdownV2"
 			)
 			

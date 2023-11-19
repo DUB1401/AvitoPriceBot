@@ -356,7 +356,7 @@ class BotManager:
 	#==========================================================================================#
 
 	# Задаёт свойства для дней недели в календаре текущего месяца.
-	def cmd_calendar(self, UserID: str, ItemID: str, Price: str, PerGuestExtraPrice: str, DaysOfWeek: str) -> bool:
+	def cmd_calendar(self, UserID: str, ItemID: str, Price: str, ExtraPrice: str, DaysOfWeek: str) -> bool:
 		# Состояние: успешна ли регистрация.
 		IsSuccess = False
 		# Состояние: используется дельта.
@@ -388,12 +388,12 @@ class BotManager:
 			
 		else:
 			# Список дат.
-			Dates = GetDates(DaysOfWeek)
+			Dates = GetDates(self.__Settings["timezone"], DaysOfWeek)
 			
 			# Для каждой даты.
 			for Date in Dates:
 				# Изменение свойств для даты.
-				IsSuccess = self.__Users[UserID].setCalendarDayProperties(ItemID, Date, Price, IsDelta, PerGuestExtraPrice = int(PerGuestExtraPrice), Flat = Origin, Deferred = False)
+				IsSuccess = self.__Users[UserID].setCalendarDayProperties(ItemID, Date, Price, IsDelta, ExtraPrice = int(ExtraPrice), Flat = Origin, Deferred = False)
 				# Выжидание интервала.
 				sleep(0.1)
 				
@@ -405,7 +405,7 @@ class BotManager:
 		return IsSuccess
 
 	# Задаёт свойства для определённого дня в календаре.
-	def cmd_dayprice(self, UserID: str, ItemID: str, Price: str, PerGuestExtraPrice: str, Date: DateParser) -> bool:
+	def cmd_dayprice(self, UserID: str, ItemID: str, Price: str, ExtraPrice: str, Date: DateParser) -> bool:
 		# Состояние: успешна ли регистрация.
 		IsSuccess = False
 		# Состояние: используется дельта.
@@ -437,7 +437,7 @@ class BotManager:
 			
 		else:
 			# Изменение свойств для даты.
-			IsSuccess = self.__Users[UserID].setCalendarDayProperties(ItemID, Date, Price, IsDelta, PerGuestExtraPrice = int(PerGuestExtraPrice), Flat = Origin, Deferred = False)
+			IsSuccess = self.__Users[UserID].setCalendarDayProperties(ItemID, Date, Price, IsDelta, ExtraPrice = int(ExtraPrice), Flat = Origin, Deferred = False)
 		
 		return IsSuccess
 

@@ -2,6 +2,7 @@ from dublib.Methods import RemoveRecurringSubstrings
 from Source.DateParser import DateParser
 from calendar import Calendar
 from datetime import datetime
+from pytz import timezone
 
 # Возвращает список недель месяца.
 def GetCurrentMonth() -> list[list[int]]:
@@ -55,13 +56,15 @@ def ParseCommand(Text: str, CommandsList: list[str]) -> list[str] | None:
 	return CommandData
 
 # Возвращает список дат, подходящих под фильтр дней недели.
-def GetDates(DaysOfWeek: str) -> list[DateParser]:
+def GetDates(Timezone: str, DaysOfWeek: str) -> list[DateParser]:
 	# Список дат.
 	Dates = list()
 	# Дни недели.
 	DaysOfWeek = DaysOfWeek.split(',')
 	# Календарный список.
 	Weeks = GetCurrentMonth()
+	# Объект даты.
+	DateTime = datetime.now(timezone(Timezone))
 	# Названия дней недели.
 	Declaration = {
 		"пн": 1,	
@@ -75,10 +78,17 @@ def GetDates(DaysOfWeek: str) -> list[DateParser]:
 	# Индексы выбранных дней недели.
 	IntegerDaysOfWeek = list()
 	
-	# Для каждого дня.
-	for Day in DaysOfWeek:
-		# Сохранить индекс дня недели.
-		IntegerDaysOfWeek.append(Declaration[Day])
+	# Если указано изменить весь месяц.
+	if DaysOfWeek[0] == '*':
+		# Выбрать все дни месяца.
+		IntegerDaysOfWeek = [1, 2, 3, 4, 5, 6, 7]
+	
+	else:
+		
+		# Для каждого дня недели.
+		for Day in DaysOfWeek:
+			# Сохранить индекс дня недели.
+			IntegerDaysOfWeek.append(Declaration[Day])
 		
 	# Для каждой недели.
 	for Week in Weeks:
@@ -86,10 +96,10 @@ def GetDates(DaysOfWeek: str) -> list[DateParser]:
 		# Для каждого дня.
 		for Index in range(0, len(Week)):
 			
-			# Если день недели выбран и принадлежит текущему месяцу.
-			if Index + 1 in IntegerDaysOfWeek and Week[Index] != 0:
+			# Если день недели выбран, принадлежит текущему месяцу и ещё не прошёл.
+			if Index + 1 in IntegerDaysOfWeek and Week[Index] != 0 and Week[Index] >= DateTime.day:
 				# Составление даты.
-				Date = str(Week[Index]) + "." + str(datetime.now().month) + "." + str(datetime.now().year)
+				Date = str(Week[Index]) + "." + str(DateTime.month) + "." + str(DateTime.year)
 				# Записать дату.
 				Dates.append(DateParser(Date))
 	
