@@ -352,6 +352,8 @@ def ProcessTextMessage(Message: types.Message):
 							case "calendar":
 								# Попытка выполнить команду.
 								Result = BotData.cmd_calendar(CommandData[1], CommandData[2], CommandData[3], CommandData[4], CommandData[5])
+								# Экранирование символов идентификатора квартиры.
+								CommandData[2] = EscapeCharacters(CommandData[2])
 								
 								# Если выполнение успешно.
 								if Result == True:
@@ -380,6 +382,8 @@ def ProcessTextMessage(Message: types.Message):
 								Result = BotData.cmd_dayprice(CommandData[1], CommandData[2], CommandData[3], CommandData[4], Date)
 								# Дата.
 								Date = EscapeCharacters(Date.date())
+								# Экранирование символов идентификатора квартиры.
+								CommandData[2] = EscapeCharacters(CommandData[2])
 								
 								# Если выполнение успешно.
 								if Result == True:
@@ -476,15 +480,18 @@ def ProcessTextMessage(Message: types.Message):
 							case "newflat":
 								# Попытка выполнить команду.
 								Result = BotData.cmd_newflat(CommandData[1], CommandData[2])
+								# Экранирование символов идентификатора квартиры.
+								CommandData[1] = EscapeCharacters(CommandData[1])
+								# Экранирование символов нового идентификатора квартиры.
+								CommandData[2] = EscapeCharacters(CommandData[2])
 								
 								# Если выполнение успешно.
 								if Result == True:
-									# Экранирование идентификатора.
-									NewID = EscapeCharacters(CommandData[2])
+									
 									# Отправка сообщения: идентификатор изменён.
 									Bot.send_message(
 										Message.chat.id,
-										f"Для объявления *{CommandData[1]}* задан новый идентификатор *{NewID}*\. Теперь вы можете использовать его в командах\.",
+										f"Для объявления *{CommandData[1]}* задан новый идентификатор *{CommandData[2]}*\. Теперь вы можете использовать его в командах\.",
 										parse_mode = "MarkdownV2",
 										disable_web_page_preview = True
 									)
@@ -550,6 +557,8 @@ def ProcessTextMessage(Message: types.Message):
 							case "price":
 								# Попытка выполнить команду.
 								Result = BotData.cmd_price(CommandData[1], CommandData[2], CommandData[3])
+								# Экранирование символов идентификатора квартиры.
+								CommandData[2] = EscapeCharacters(CommandData[2])
 								
 								# Если выполнение успешно.
 								if Result == True:
@@ -574,6 +583,9 @@ def ProcessTextMessage(Message: types.Message):
 							case "rename":
 								# Попытка выполнить команду.
 								Result = BotData.cmd_rename(CommandData[1], CommandData[2])
+								# Экранирование символов идентификатора профиля.
+								CommandData[1] = EscapeCharacters(CommandData[1])
+								CommandData[2] = EscapeCharacters(CommandData[2])
 								
 								# Если выполнение успешно.
 								if Result == True:
@@ -634,6 +646,8 @@ def ProcessTextMessage(Message: types.Message):
 							case "unregister":
 								# Попытка выполнить команду.
 								Result = BotData.cmd_unregister(CommandData[1])
+								# Экранирование символов идентификатора профиля.
+								CommandData[1] = EscapeCharacters(CommandData[1])
 								
 								# Если выполнение успешно.
 								if Result == True:
