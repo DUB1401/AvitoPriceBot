@@ -557,15 +557,15 @@ def ProcessTextMessage(Message: types.Message):
 							case "price":
 								# Попытка выполнить команду.
 								Result = BotData.cmd_price(CommandData[1], CommandData[2], CommandData[3])
-								# Экранирование символов идентификатора квартиры.
-								CommandData[2] = EscapeCharacters(CommandData[2])
+								# Квартиры.
+								Flats = CommandData[2].split(',')
 								
 								# Если выполнение успешно.
 								if Result == True:
 									# Отправка сообщения: идентификатор успешно изменён.
 									Bot.send_message(
 										Message.chat.id,
-										f"Для объявления *{CommandData[2]}* задана новая стоимость\.",
+										f"Задана новая стоимость для следующих объявлений: _(" + EscapeCharacters(", ".join(Flats)) + ")_\.",
 										parse_mode = "MarkdownV2",
 										disable_web_page_preview = True
 									)
@@ -574,7 +574,7 @@ def ProcessTextMessage(Message: types.Message):
 									# Отправка сообщения: не удалось изменить идентификатор.
 									Bot.send_message(
 										Message.chat.id,
-										f"Не удалось изменить стоимость аренды в объявлении *{CommandData[2]}*\.",
+										f"Не удалось изменить стоимость аренды в указанных вами объявлениях.",
 										parse_mode = "MarkdownV2",
 										disable_web_page_preview = True
 									)
