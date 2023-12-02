@@ -3,6 +3,7 @@ from Source.DateParser import DateParser
 from threading import Thread
 from time import sleep
 
+import datetime
 import requests
 import logging
 import telebot
@@ -82,7 +83,7 @@ class AvitoUser:
 		# Постоянно.
 		while True:
 			# Выжидание 23-ёх часов.
-			sleep(1380)
+			sleep(23 * 60 * 60)
 			# Обновление токен.
 			self.__RefreshAccessToken()
 			
@@ -92,7 +93,7 @@ class AvitoUser:
 		# Постоянно.
 		while True:
 			# Выжидание 5-ти минут.
-			sleep(300)
+			sleep(5 * 60)
 
 			# Если поток обновления токена остановлен.
 			if self.__Updater.is_alive() == False:
@@ -140,10 +141,13 @@ class AvitoUser:
 	def checkBooking(self, Date: DateParser, Profile: int | str, ItemID: int | str) -> bool:
 		# Состояние: забронирована ли квартира.
 		IsBooking = False
-		# Преобразование даты в нужный формат.
-		Date = Date.date("-", True, True)
+		# Даты.
+		Today = Date.datetime()
+		Tomorrow = Today + datetime.timedelta(day = 1)
+		# Строковое представление сегодняшнего дня.
+		TodatStringDate = Today.strftime("%Y-%m-%d")	
 		# Отправка запроса на получение броней.
-		Response = self.__Session.get(f"https://api.avito.ru/realty/v1/accounts/{Profile}/items/{ItemID}/bookings?date_start={Date}&date_end={Date}&with_unpaid=true")
+		Response = self.__Session.get(f"https://api.avito.ru/realty/v1/accounts/{Profile}/items/{ItemID}/bookings?date_start={TodatStringDate}&date_end=" + Tomorrow.strftime("%Y-%m-%d") + "&with_unpaid=true")
 		
 		# Проверка ответа.
 		if Response.status_code != 200:
@@ -151,16 +155,15 @@ class AvitoUser:
 			logging.error(f"Profile: {self.__ProfileID}. Unable to check bookings.")
 			
 		else:
-			# Список броней.
-			Bookings = dict(json.loads(Response.text))["bookings"]
 			
-			# Если брони есть.
-			if len(Bookings) > 0:
-				# Переключение состояния.
-				IsBooking = True
-		
-			# Запись в лог сообщения: свойства даты изменены.
-			logging.error(f"Profile: {self.__ProfileID}. Bookings: " + str(len(Bookings)) + ".")
+			# Для каждой брони.
+			for Booking in dict(json.loads(Response.text))["bookings"]:
+				
+				if Booking["check_in"] == Today:
+					# Переключение состояния.
+					IsBooking = True
+					# Запись в лог сообщения: имеется бронь на сегодняшний день.
+					logging.info(f"Profile: {self.__ProfileID}. Booking today: YES.")
 		
 		return IsBooking
 		
@@ -276,7 +279,7 @@ class AvitoUser:
 		# Состояние: успешен ли запрос.
 		IsSuccess = True
 		# Конвертирование даты.
-		StringDate = Date.date("-", True, True)
+		Today = Date.datetime()
 		# Если идентификатор квартиры не задан.
 		if Flat == None: Flat = ItemID
 		# Экранирование.
@@ -285,11 +288,11 @@ class AvitoUser:
 		Options = {
 			"prices": [
 				{
-				"date_from": StringDate,
-				"date_to": StringDate,
-				"minimal_duration": int(Duration),
-				"extra_guest_fee": int(ExtraPrice),
-				"night_price": int(Price)
+					"date_from": Today.strftime("%Y-%m-%d"),
+					"date_to": Today.strftime("%Y-%m-%d"),
+					"minimal_duration": int(Duration),
+					"extra_guest_fee": int(ExtraPrice),
+					"night_price": int(Price)
 				}
 			]	
 		}
@@ -305,15 +308,12 @@ class AvitoUser:
 		if Response.status_code != 200:
 			# Переключение статуса запроса.
 			IsSuccess = False
-			# Конвертирование даты.
-			StringDate = Date.date()
 			# Запись в лог ошибки: не удалось изменить свойства.
-			logging.error(f"Profile: {self.__ProfileID}. Unable to change properties for date: \"{StringDate}\". Response code: " + str(Response.status_code) + ".")
-			print(Response.text)
+			logging.error(f"Profile: {self.__ProfileID}. Unable to change properties for date: \"" + Today.strftime("%Y-%m-%d") + "\". Response code: " + str(Response.status_code) + ".")
 			
 		else:
 			# Запись в лог сообщения: свойства даты изменены.
-			logging.error(f"Profile: {self.__ProfileID}. Properties for date \"{StringDate}\" changed.")
+			logging.error(f"Profile: {self.__ProfileID}. Properties for date \"" + Today.strftime("%Y-%m-%d") + "\" changed.")
 		
 		# Если успешно.
 		if IsSuccess == True and self.__Settings["report-target"] != None and Deferred == True:
@@ -327,7 +327,7 @@ class AvitoUser:
 			# Отправка сообщения: свойства дня изменены.
 			self.__Bot.send_message(
 				chat_id = self.__Settings["report-target"],
-				text = f"📢 *Отчёты*\n\nДля объявления *{Flat}* в дату _" + EscapeCharacters(StringDate) + f"_ заданы новые свойства\. Стоимость {Verb} на " + str(Price).lstrip('-') + f" RUB\." + ExtraMessage,
+				text = f"📢 *Отчёты*\n\nДля объявления *{Flat}* в дату _" + EscapeCharacters(Today.strftime("%d.%m.%Y")) + f"_ заданы новые свойства\. Стоимость {Verb} на " + str(Price).lstrip('-') + f" RUB\." + ExtraMessage,
 				parse_mode = "MarkdownV2"
 			)
 			

@@ -1,3 +1,5 @@
+import datetime
+
 # Парсер даты.
 class DateParser:
 	
@@ -33,13 +35,13 @@ class DateParser:
 			if IsYearFirst == True:
 				# Парсинг даты.
 				self.__Year = int(DateProperties[0])
-				self.__Mounth = int(DateProperties[1])
+				self.__Month = int(DateProperties[1])
 				self.__Day = int(DateProperties[2])
 				
 			else:
 				# Парсинг даты.
 				self.__Year = int(DateProperties[2])
-				self.__Mounth = int(DateProperties[1])
+				self.__Month = int(DateProperties[1])
 				self.__Day = int(DateProperties[0])
 				
 		else:
@@ -54,7 +56,7 @@ class DateParser:
 		# День.
 		self.__Day = None
 		# Месяц.
-		self.__Mounth = None
+		self.__Month = None
 		# Год.
 		self.__Year = None
 		
@@ -72,13 +74,13 @@ class DateParser:
 		if Alignment == True:
 			# Заполнение свойств.
 			DateProperties.append(str(self.__Day).rjust(2, '0'))
-			DateProperties.append(str(self.__Mounth).rjust(2, '0'))
+			DateProperties.append(str(self.__Month).rjust(2, '0'))
 			DateProperties.append(str(self.__Year))
 			
 		else:
 			# Заполнение свойств.
 			DateProperties.append(str(self.__Day))
-			DateProperties.append(str(self.__Mounth))
+			DateProperties.append(str(self.__Month))
 			DateProperties.append(str(self.__Year))
 		
 		# Если дата должна начинаться с года.
@@ -91,14 +93,18 @@ class DateParser:
 			Value = DateProperties[0] + Separator + DateProperties[1] + Separator + DateProperties[2]
 		
 		return Value
+	
+	# Возвращает объект даты Python.
+	def datetime(self) -> datetime.datetime:
+		return datetime.datetime(year = self.__Year, month = self.__Month, day = self.__Day)
 		
 	# Возвращает день.
 	def day(self) -> int:
 		return self.__Day
 		
 	# Возвращает номер месяца.
-	def mounth(self) -> int:
-		return self.__Mounth
+	def month(self) -> int:
+		return self.__Month
 	
 	# Возвращает год.
 	def year(self) -> int:
