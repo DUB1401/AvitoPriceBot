@@ -119,14 +119,21 @@ class BotManager:
 			# Инициализация пользователя.
 			self.register(User)
 			
-	# Загружает сохранённые задачи.
+	# Загружает сохранённые работы и задачи.
 	def __LoadTasks(self):
 		# Чтение файла задач.
 		Tasks = ReadJSON("Data/Tasks.json")
 		# Инициализация планировщика.
 		self.__Planner = Scheduler(self.__Settings, Tasks, self.__Users)
+		# Запись в лог сообщения: количество загруженных работ.
+		logging.info("Jobs count: " + str(len(Tasks["jobs"])) + ".")
 		# Запись в лог сообщения: количество загруженных задач.
 		logging.info("Tasks count: " + str(len(Tasks["tasks"].keys())) + ".")
+		
+		# Для каждой работы.
+		for Job in Tasks["jobs"]:
+			# Создание работы.
+			self.__Planner.createJob(Job["profile"], Job["item-id"], Job["price"], Job["delta"], Job["extra-price"], Job["hour"], Flat = Job["flat"])
 		
 		# Для каждой задачи.
 		for TaskID in Tasks["tasks"].keys():

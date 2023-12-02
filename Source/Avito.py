@@ -138,21 +138,27 @@ class AvitoUser:
 			self.__Supervisor.start()
 			
 	# Проверяет, забронирована ли квартира на сегодня.
-	def checkBooking(self, Date: DateParser, Profile: int | str, ItemID: int | str) -> bool:
+	def checkBooking(self, Date: DateParser, ItemID: int | str) -> bool | None:
+		# Заголовки запроса.
+		Headers = {
+			"authorization": self.getAccessToken()
+		}
 		# Состояние: забронирована ли квартира.
 		IsBooking = False
 		# Даты.
 		Today = Date.datetime()
-		Tomorrow = Today + datetime.timedelta(day = 1)
+		Tomorrow = Today + datetime.timedelta(days = 1)
 		# Строковое представление сегодняшнего дня.
 		TodatStringDate = Today.strftime("%Y-%m-%d")	
 		# Отправка запроса на получение броней.
-		Response = self.__Session.get(f"https://api.avito.ru/realty/v1/accounts/{Profile}/items/{ItemID}/bookings?date_start={TodatStringDate}&date_end=" + Tomorrow.strftime("%Y-%m-%d") + "&with_unpaid=true")
+		Response = self.__Session.get(f"https://api.avito.ru/realty/v1/accounts/{self.__ProfileID}/items/{ItemID}/bookings?date_start={TodatStringDate}&date_end=" + Tomorrow.strftime("%Y-%m-%d") + "&with_unpaid=true", headers = Headers)
 		
 		# Проверка ответа.
 		if Response.status_code != 200:
 			# Запись в лог ошибки: не удалось изменить свойства.
-			logging.error(f"Profile: {self.__ProfileID}. Unable to check bookings.")
+			logging.error(f"Profile: {self.__ProfileID}. Item ID: {ItemID}. Unable to check bookings. Status code: " + str(Response.status_code) + "." + str(Response.text))
+			# Переключение состояния.
+			IsBooking = None 
 			
 		else:
 			
@@ -163,7 +169,7 @@ class AvitoUser:
 					# Переключение состояния.
 					IsBooking = True
 					# Запись в лог сообщения: имеется бронь на сегодняшний день.
-					logging.info(f"Profile: {self.__ProfileID}. Booking today: YES.")
+					logging.info(f"Profile: {self.__ProfileID}. Item ID: {ItemID}. Booking today: true.")
 		
 		return IsBooking
 		
@@ -309,11 +315,11 @@ class AvitoUser:
 			# Переключение статуса запроса.
 			IsSuccess = False
 			# Запись в лог ошибки: не удалось изменить свойства.
-			logging.error(f"Profile: {self.__ProfileID}. Unable to change properties for date: \"" + Today.strftime("%Y-%m-%d") + "\". Response code: " + str(Response.status_code) + ".")
+			logging.error(f"Profile: {self.__ProfileID}. Item ID: {ItemID}. Unable to change properties for date: \"" + Today.strftime("%Y-%m-%d") + "\". Response code: " + str(Response.status_code) + ".")
 			
 		else:
 			# Запись в лог сообщения: свойства даты изменены.
-			logging.error(f"Profile: {self.__ProfileID}. Properties for date \"" + Today.strftime("%Y-%m-%d") + "\" changed.")
+			logging.info(f"Profile: {self.__ProfileID}. Item ID: {ItemID}. Properties for date \"" + Today.strftime("%Y-%m-%d") + "\" changed.")
 		
 		# Если успешно.
 		if IsSuccess == True and self.__Settings["report-target"] != None and Deferred == True:

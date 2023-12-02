@@ -115,9 +115,9 @@ class Scheduler:
 		for Job in self.__Tasks["jobs"]:
 			# Формирование даты.
 			Date = DateParser(str(datetime.now(Timezone).date()).replace('-', '.'))
-
+			
 			# Если час совпадает и на дату нет брони.
-			if Job["hour"] == Hour and self.__Users[Job["profile"]].checkBooking(Date, Job["profile"], Job["item-id"]) == False:
+			if Job["hour"] == Hour and self.__Users[Job["profile"]].checkBooking(Date, Job["item-id"]) == False:
 				
 				# Изменить свойства для текущего дня.
 				self.__Users[Job["profile"]].setCalendarDayProperties(
@@ -133,7 +133,6 @@ class Scheduler:
 	
 	# Конструктор.
 	def __init__(self, Settings: dict, TasksJSON: dict, Users: dict):
-		
 		#---> Генерация динамических свойств.
 		#==========================================================================================#
 		# Планировщик задач.
@@ -148,15 +147,10 @@ class Scheduler:
 		# Если заданы работы.
 		if len(TasksJSON["jobs"]) > 0:
 			# Создание задачи.
-			self.__Planner.add_job(
-				func = self.__Worker,
-				trigger = "cron",
-				id = "WORKER",
-				hour = "*"
-			)
+			self.__Planner.add_job(self.__Worker, "interval", hours = 1)
 			# Немедленный запуск.
 			self.__Worker()
-		
+			
 		# Запуск планировщика.
 		self.__Planner.start()
 	
@@ -250,9 +244,9 @@ class Scheduler:
 		logging.info(f"Task with ID {ID} initialized. Trigger type: \"date\".")
 		
 	# Создаёт работу.
-	def createJob(self, Profile: str, ItemID: int, Price: int, IsDelta: bool, ExtraPrice: int, Hour: int, Flat: str | None = None):
-		# ID.
-		ID = self.__GenerateID("job")
+	def createJob(self, Profile: str, ItemID: int, Price: int, IsDelta: bool, ExtraPrice: int, Hour: int, Flat: str | None = None, ID: int | None = None):
+		# Генерация ID.
+		if ID == None: ID = self.__GenerateID("job")
 		# Описание работы.
 		Description = {
 			"id": int(ID),
@@ -266,11 +260,9 @@ class Scheduler:
 		}
 
 		# Добавление работы в описание.
-		self.__Tasks["jobs"].append(Description)
+		if ID == None: self.__Tasks["jobs"].append(Description)
 		# Сохранение файла.
 		self.__Save()
-		# Немедленный запуск.
-		self.__Worker()
 
 	# Возвращает список работ.
 	def getJobs(self) -> list[dict]:
