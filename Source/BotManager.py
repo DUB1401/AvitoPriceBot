@@ -594,13 +594,11 @@ class BotManager:
 		return IsSuccess
 
 	# Изменяет стоимость аренды.
-	def cmd_price(self, UserID: str, ItemID: str, Price: str) -> bool:
-		# Состояние: успешна ли регистрация.
-		IsSuccess = False
+	def cmd_price(self, UserID: str, ItemID: str, Price: str) -> int:
+		# Количество ошибок.
+		ErrorsCount = 0
 		# Состояние: используется дельта.
 		IsDelta = False
-		# Обработка идентификатора квартиры.
-		Origin, ItemID = self.__ProcessFlatName(ItemID)
 		
 		# Если присутствует знак, то включить режим изменения по дельте.
 		if '+' in Price or '-' in Price:
@@ -625,10 +623,29 @@ class BotManager:
 			logging.error(f"Uncorrect price.")
 			
 		else:
-			# Изменение стоимости аренды.
-			IsSuccess = self.__Users[UserID].setPrice(ItemID, Price, Deferred = False) if IsDelta == False else self.__Users[UserID].setDeltaPrice(ItemID, Price, Deferred = False)
+			
+			# Для каждого объявления.
+			for Item in ItemID.split(','):
+				# Обработка идентификатора квартиры.
+				Origin, CurrentItemID = self.__ProcessFlatName(Item)
+				# Ответ.
+				Result = None
+				
+				try:
+					# Изменение стоимости аренды.
+					Result = self.__Users[UserID].setPrice(CurrentItemID, Price, Deferred = False) if IsDelta == False else self.__Users[UserID].setDeltaPrice(CurrentItemID, Price, Deferred = False)
+					
+				except Exception as ExceptionData:
+					# Запись в лог ошибки:
+					logging.error("Profile:" + self.__UsersData["profiles"][UserID]["profile"] +  f". Item ID: {CurrentItemID}. Unable to set price. Description: \"" + str(ExceptionData) + "\".")
+					# Инкремент ошибок.
+					ErrorsCount += 1
+					
+				else:
+					# Инкремент ошибок.
+					if Result != True: ErrorsCount += 1
 		
-		return IsSuccess
+		return ErrorsCount
 
 	# Изменяет идентификатор пользователя.
 	def cmd_rename(self, OldID: str, NewID: str) -> bool:

@@ -561,20 +561,20 @@ def ProcessTextMessage(Message: types.Message):
 								Flats = CommandData[2].split(',')
 								
 								# Если выполнение успешно.
-								if Result == True:
-									# Отправка сообщения: идентификатор успешно изменён.
+								if Result == 0:
+									# Отправка сообщения: базовая цена изменена.
 									Bot.send_message(
 										Message.chat.id,
-										f"Задана новая стоимость для следующих объявлений: _(" + EscapeCharacters(", ".join(Flats)) + ")_\.",
+										f"Задана новая стоимость для следующих объявлений: _" + EscapeCharacters(", ".join(Flats)) + "_\.",
 										parse_mode = "MarkdownV2",
 										disable_web_page_preview = True
 									)
 									
 								else:
-									# Отправка сообщения: не удалось изменить идентификатор.
+									# Отправка сообщения: не удалось изменить базовую цену.
 									Bot.send_message(
 										Message.chat.id,
-										f"Не удалось изменить стоимость аренды в указанных вами объявлениях.",
+										f"Не удалось изменить стоимость в {Result} объявлениях.",
 										parse_mode = "MarkdownV2",
 										disable_web_page_preview = True
 									)

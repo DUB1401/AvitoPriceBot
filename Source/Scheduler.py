@@ -105,7 +105,7 @@ class Scheduler:
 				Retry += 1
 		
 	# Поток-обработчик работ.
-	def __Worker(self):
+	def __Worker(self, Deferred: bool = True):
 		# Создание часового пояса.
 		Timezone = timezone(self.__Settings["timezone"])
 		# Получение текущего часа.
@@ -126,7 +126,8 @@ class Scheduler:
 					Price = Job["price"],
 					IsDelta = Job["delta"],
 					ExtraPrice = Job["extra-price"],
-					Flat = Job["flat"]
+					Flat = Job["flat"],
+					Deferred = Deferred
 				)
 				# Выжидание интервала.
 				sleep(self.__Settings["delay"])
@@ -147,9 +148,9 @@ class Scheduler:
 		# Если заданы работы.
 		if len(TasksJSON["jobs"]) > 0:
 			# Создание задачи.
-			self.__Planner.add_job(self.__Worker, "interval", hours = 1)
+			self.__Planner.add_job(self.__Worker, "cron", minute = "0", hour = "*")
 			# Немедленный запуск.
-			self.__Worker()
+			self.__Worker(False)
 			
 		# Запуск планировщика.
 		self.__Planner.start()
