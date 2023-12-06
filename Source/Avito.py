@@ -337,6 +337,9 @@ class AvitoUser:
 				parse_mode = "MarkdownV2"
 			)
 			
+		# Запись в лог сообщения: базовая стоимость изменена.
+		if IsSuccess == True: logging.info(f"Profile: {self.__ProfileID}. Item ID: {ItemID}. Price on date \"" + Date.date("-", True, True) + f"\" changed to {Price} RUB.")
+			
 		return IsSuccess
 	
 	# Задаёт стоимость объявлению с указанным ID.
@@ -367,6 +370,9 @@ class AvitoUser:
 				text = "📢 *Отчёты*\n\nСтоимость в объявлении *" + str(Flat) + "* изменена на " + str(Price) + " RUB\.",
 				parse_mode = "MarkdownV2"
 			)
+			
+		# Запись в лог сообщения: базовая стоимость изменена.
+		if IsSuccess == True: logging.info(f"Profile: {self.__ProfileID}. Item ID: {ItemID}. Price changed to {Price} RUB.")
 			
 		return IsSuccess
 	
@@ -400,5 +406,8 @@ class AvitoUser:
 				text = f"📢 *Отчёты*\n\nСтоимость в объявлении *{Flat}* {Verb} на " + str(DeltaPrice).lstrip('-') + " RUB\.",
 				parse_mode = "MarkdownV2"
 			)
+			
+		# Запись в лог сообщения: базовая стоимость изменена.
+		if IsSuccess == True: logging.info(f"Profile: {self.__ProfileID}. Item ID: {ItemID}. Price changed to {Price} RUB.")
 		
 		return IsSuccess
