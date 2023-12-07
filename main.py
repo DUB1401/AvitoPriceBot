@@ -432,13 +432,15 @@ def ProcessTextMessage(Message: types.Message):
 							case "deljob":
 								# Попытка выполнить команду.
 								Result = BotData.cmd_deljob(CommandData[1])
+								# Разбиение аргумента.
+								Jobs = CommandData[1].split(',')
 								
 								# Если выполнение успешно.
-								if Result == True:
+								if Result == 0:
 									# Отправка сообщения: работа удалена.
 									Bot.send_message(
 										Message.chat.id,
-										f"Работа удалена.",
+										"Работа удалена." if len(Jobs) == 1 else f"Удалено работ: {Result}.",
 										parse_mode = None,
 										disable_web_page_preview = True
 									)
@@ -447,7 +449,7 @@ def ProcessTextMessage(Message: types.Message):
 									# Отправка сообщения: не удалось удалить работу.
 									Bot.send_message(
 										Message.chat.id,
-										f"Не удалось удалить работу. Проверьте корректность указанного идентификатора.",
+										"Не удалось удалить работу. Проверьте корректность указанного идентификатора." if len(Jobs) == 1 else f"Не удалось удалить работ: {Result}. Проверьте корректность указанных идентификаторов.",
 										parse_mode = None,
 										disable_web_page_preview = True
 									)

@@ -467,8 +467,21 @@ class BotManager:
 		return IsSuccess
 
 	# Удаляет работу.
-	def cmd_deljob(self, JobID: str) -> bool:
-		return self.__Planner.removeJob(int(JobID))
+	def cmd_deljob(self, JobID: str) -> int:
+		# Разбиение аргумента.
+		Jobs = JobID.split(',')
+		# Количество ошибок.
+		ErrorsCount = 0
+		
+		# Для каждой работы.
+		for ID in Jobs:
+			
+			# Если работа успешно удалена.
+			if self.__Planner.removeJob(int(ID)) == False:
+				# Инкремент количества ошибок.
+				ErrorsCount += 1
+				
+		return ErrorsCount
 
 	# Удаляет задачу.
 	def cmd_deltask(self, TaskID: str) -> bool:
