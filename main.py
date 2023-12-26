@@ -573,10 +573,12 @@ def ProcessTextMessage(Message: types.Message):
 									)
 									
 								else:
+									# Постановка слова в падеж.
+									Word = "объявлении" if str(Result).endswith("1") else "объявлениях"
 									# Отправка сообщения: не удалось изменить базовую цену.
 									Bot.send_message(
 										Message.chat.id,
-										f"Не удалось изменить стоимость в {Result} объявлениях.",
+										f"Не удалось изменить стоимость в {Result} {Word}\. Возможно, стоимость слишком низкая для данного региона\.",
 										parse_mode = "MarkdownV2",
 										disable_web_page_preview = True
 									)
