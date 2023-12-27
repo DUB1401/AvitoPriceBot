@@ -519,7 +519,7 @@ def ProcessTextMessage(Message: types.Message):
 									# Отправка сообщения: идентификатор успешно изменён.
 									Bot.send_message(
 										Message.chat.id,
-										f"Работ создано: *" + str(FlatsCount - Result) + "*\.",
+										f"Работ создано: *" + str(FlatsCount) + "*\.",
 										parse_mode = "MarkdownV2",
 									)
 									
@@ -527,7 +527,7 @@ def ProcessTextMessage(Message: types.Message):
 									# Отправка сообщения: не удалось изменить идентификатор.
 									Bot.send_message(
 										Message.chat.id,
-										f"Не удалось следующее количество работ: *{Result}*\.",
+										f"Не удалось создать следующее количество работ: *{Result}*\. Проверьте корректность введённых данных.",
 										parse_mode = "MarkdownV2",
 									)
 							

@@ -133,7 +133,7 @@ class BotManager:
 		# Для каждой работы.
 		for Job in Tasks["jobs"]:
 			# Создание работы.
-			self.__Planner.createJob(Job["profile"], Job["item-id"], Job["price"], Job["delta"], Job["extra-price"], Job["hour"], Flat = Job["flat"])
+			self.__Planner.createJob(Job["profile"], Job["item-id"], Job["price"], Job["delta"], Job["extra-price"], Job["hour"], Flat = Job["flat"], ID = Job["id"])
 		
 		# Для каждой задачи.
 		for TaskID in Tasks["tasks"].keys():
@@ -531,10 +531,10 @@ class BotManager:
 			
 		else:
 			# Обработка идентификатора квартиры.
-			OriginName, ItemID = self.__ProcessFlatName(ItemID)
+			OriginName, ItemIntID = self.__ProcessFlatName(ItemID)
 			# Сохранение профиля.
 			Items.append({
-				"item-id": int(ItemID),
+				"item-id": int(ItemIntID),
 				"flat": OriginName
 			})
 		
@@ -547,7 +547,7 @@ class BotManager:
 		
 			try:
 				# Создание работы.
-				self.__Planner.createJob(Profile, CurrentItem["item-id"], int(Price), IsDelta, int(ExtraPrice), int(Hour), Flat = CurrentItem["flat"])
+				self.__Planner.createJob(Profile, CurrentItem["item-id"], int(Price), IsDelta, int(ExtraPrice), int(Hour), Flat = CurrentItem["flat"], ID = None)
 			
 			except Exception as ExceptionData:
 				# Запись в лог ошибки:

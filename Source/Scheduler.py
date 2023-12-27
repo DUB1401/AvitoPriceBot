@@ -247,10 +247,10 @@ class Scheduler:
 	# Создаёт работу.
 	def createJob(self, Profile: str, ItemID: int, Price: int, IsDelta: bool, ExtraPrice: int, Hour: int, Flat: str | None = None, ID: int | None = None):
 		# Генерация ID.
-		if ID == None: ID = self.__GenerateID("job")
+		ID = self.__GenerateID("job") if ID == None else None
 		# Описание работы.
 		Description = {
-			"id": int(ID),
+			"id": int(ID) if ID != None else None,
 			"profile": Profile,
 			"item-id": ItemID,
 			"flat": Flat,
@@ -261,7 +261,7 @@ class Scheduler:
 		}
 
 		# Добавление работы в описание.
-		if ID == None: self.__Tasks["jobs"].append(Description)
+		if ID != None: self.__Tasks["jobs"].append(Description)
 		# Сохранение файла.
 		self.__Save()
 
